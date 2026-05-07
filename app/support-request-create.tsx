@@ -107,13 +107,19 @@ export default function SupportRequestCreateScreen() {
   return (
     <RequestScreen title="Create Request" onBackPress={() => router.push('/(tabs)/requests')}>
       <RequestSection title="Request Details">
-        <RequestField label="Title" onChangeText={setTitle} value={title} />
+        <RequestField
+          label="Title"
+          onChangeText={setTitle}
+          value={title}
+          leftIcon={<Feather name="type" size={18} color="#6E786F" />}
+        />
         <RequestField
           label="Description"
           multiline
           numberOfLines={5}
           onChangeText={setDescription}
           value={description}
+          leftIcon={<Feather name="align-left" size={18} color="#6E786F" />}
         />
       </RequestSection>
 
@@ -138,7 +144,7 @@ export default function SupportRequestCreateScreen() {
         <RequestField
           label="Address"
           onChangeText={setAddress}
-          rightIcon={<Feather name="map-pin" size={18} color="#6E786F" />}
+          leftIcon={<Feather name="map-pin" size={18} color="#6E786F" />}
           value={address}
         />
       </RequestSection>
@@ -150,11 +156,13 @@ export default function SupportRequestCreateScreen() {
           disabled={isSubmitting || categories.length === 0}
           label={isSubmitting ? 'Creating...' : 'Create Request'}
           onPress={handleCreateRequest}
+          leftIcon={<Feather name="plus-circle" size={20} color="#FFFFFF" />}
         />
         <RequestButton
           label="View My Requests"
           onPress={() => router.push('/support-request-my')}
           variant="outline"
+          leftIcon={<Feather name="list" size={20} color={authPalette.primaryDark} />}
         />
       </View>
     </RequestScreen>

@@ -173,13 +173,14 @@ export default function PostsTabScreen() {
     return source;
   })();
 
-  const FilterPill = ({ label, value }: { label: string; value: PostFilter }) => {
+  const FilterPill = ({ label, value, icon }: { label: string; value: PostFilter; icon: keyof typeof Feather.glyphMap }) => {
     const isActive = activeFilter === value;
     return (
       <Pressable
         accessibilityRole="button"
         onPress={() => setActiveFilter(value)}
         style={[styles.filterPill, isActive && styles.filterPillActive]}>
+        <Feather name={icon} size={14} color={isActive ? '#FFFFFF' : authPalette.muted} style={styles.pillIcon} />
         <Text style={[styles.filterPillText, isActive && styles.filterPillTextActive]}>
           {label}
         </Text>
@@ -211,11 +212,11 @@ export default function PostsTabScreen() {
       {/* Inline Filters */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          <FilterPill label="All" value="ALL" />
-          <FilterPill label="My Posts" value="MY_POSTS" />
-          <FilterPill label="Public" value="PUBLIC" />
+          <FilterPill label="All" value="ALL" icon="layers" />
+          <FilterPill label="My Posts" value="MY_POSTS" icon="user" />
+          <FilterPill label="Public" value="PUBLIC" icon="globe" />
           {canViewVolunteerPosts(role) ? (
-            <FilterPill label="Volunteers" value="VOLUNTEERS_ONLY" />
+            <FilterPill label="Volunteers" value="VOLUNTEERS_ONLY" icon="users" />
           ) : null}
         </ScrollView>
       </View>
@@ -296,6 +297,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#E6EBE6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pillIcon: {
+    marginTop: 1,
   },
   filterPillActive: {
     backgroundColor: authPalette.primaryDark,

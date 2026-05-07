@@ -21,6 +21,7 @@ type RequestSectionProps = {
 
 type RequestFieldProps = ComponentProps<typeof TextInput> & {
   label: string;
+  leftIcon?: ReactNode;
   rightIcon?: ReactNode;
 };
 
@@ -99,11 +100,12 @@ export function RequestCard({ children }: RequestCardProps) {
   return <View style={styles.card}>{children}</View>;
 }
 
-export function RequestField({ label, rightIcon, multiline, style, ...props }: RequestFieldProps) {
+export function RequestField({ label, leftIcon, rightIcon, multiline, style, ...props }: RequestFieldProps) {
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={[styles.fieldShell, multiline && styles.fieldShellMultiline]}>
+        {leftIcon ? <View style={styles.fieldLeftIcon}>{leftIcon}</View> : null}
         <TextInput
           {...props}
           multiline={multiline}
@@ -404,6 +406,9 @@ const styles = StyleSheet.create({
   fieldInputMultiline: {
     minHeight: 104,
     textAlignVertical: 'top',
+  },
+  fieldLeftIcon: {
+    marginRight: 12,
   },
   fieldRightIcon: {
     marginLeft: 10,

@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
@@ -92,6 +93,7 @@ export default function CreateAccountScreen() {
           onChangeText={setFullName}
           textContentType="name"
           value={fullName}
+          leftIcon={<Feather name="user" size={18} color={authPalette.muted} />}
         />
 
         <AuthInput
@@ -101,6 +103,7 @@ export default function CreateAccountScreen() {
           onChangeText={setEmail}
           textContentType="emailAddress"
           value={email}
+          leftIcon={<Feather name="mail" size={18} color={authPalette.muted} />}
         />
 
         <AuthInput
@@ -109,6 +112,7 @@ export default function CreateAccountScreen() {
           onChangeText={setPhone}
           textContentType="telephoneNumber"
           value={phone}
+          leftIcon={<Feather name="phone" size={18} color={authPalette.muted} />}
         />
 
         <AuthPasswordInput
@@ -118,6 +122,7 @@ export default function CreateAccountScreen() {
           placeholder="........"
           textContentType="newPassword"
           value={password}
+          leftIcon={<Feather name="lock" size={18} color={authPalette.muted} />}
         />
 
         <PasswordStrength password={password} />
@@ -129,6 +134,7 @@ export default function CreateAccountScreen() {
           placeholder="........"
           textContentType="password"
           value={confirmPassword}
+          leftIcon={<Feather name="shield" size={18} color={authPalette.muted} />}
         />
 
         <RoleSelector
@@ -144,6 +150,7 @@ export default function CreateAccountScreen() {
             disabled={isSubmitting}
             label={isSubmitting ? 'Creating...' : 'Create Account'}
             onPress={handleCreateAccount}
+            leftIcon={<Feather name="user-plus" size={20} color="#FFFFFF" />}
           />
         </View>
 

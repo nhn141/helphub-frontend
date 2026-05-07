@@ -157,3 +157,49 @@ export async function updateSupportRequest(
 
   return response.data;
 }
+
+export async function approveSupportRequest(accessToken: string, id: string) {
+  const response = await apiRequest<ApiEnvelope<SupportRequestDetail>>(
+    `/support-requests/${id}/approve`,
+    {
+      accessToken,
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function rejectSupportRequest(
+  accessToken: string,
+  id: string,
+  rejectionReason: string
+) {
+  const response = await apiRequest<ApiEnvelope<SupportRequestDetail>>(
+    `/support-requests/${id}/reject`,
+    {
+      accessToken,
+      body: JSON.stringify({ rejectionReason }),
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function assignSupportRequestToLocation(
+  accessToken: string,
+  id: string,
+  supportLocationId: string
+) {
+  const response = await apiRequest<ApiEnvelope<SupportRequestDetail>>(
+    `/support-requests/${id}/assign-support-location`,
+    {
+      accessToken,
+      body: JSON.stringify({ supportLocationId }),
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}

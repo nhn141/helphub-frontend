@@ -172,9 +172,18 @@ export default function RequestsTabScreen() {
                     <Text style={styles.cardMeta}>{item.categoryName}</Text>
                   </View>
                   <Text style={styles.cardTitle}>{item.title}</Text>
-                  <Text style={styles.cardBody}>Requester: {item.requesterName}</Text>
-                  <Text style={styles.cardBody}>Address: {item.address ?? 'Not provided'}</Text>
-                  <Text style={styles.cardBody}>Created: {formatDateTime(item.createdAt)}</Text>
+                  <View style={styles.cardMetaRow}>
+                    <Feather name="user" size={14} color={authPalette.muted} />
+                    <Text style={styles.cardBody}>Requester: {item.requesterName}</Text>
+                  </View>
+                  <View style={styles.cardMetaRow}>
+                    <Feather name="map-pin" size={14} color={authPalette.muted} />
+                    <Text style={styles.cardBody}>Address: {item.address ?? 'Not provided'}</Text>
+                  </View>
+                  <View style={styles.cardMetaRow}>
+                    <Feather name="calendar" size={14} color={authPalette.muted} />
+                    <Text style={styles.cardBody}>Created: {formatDateTime(item.createdAt)}</Text>
+                  </View>
                   <Text style={styles.openDetail}>Open detail</Text>
                 </SurfaceCard>
               </Pressable>
@@ -234,11 +243,16 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
   },
   cardBody: {
-    marginTop: 8,
     fontSize: 14,
     lineHeight: 21,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
   },
   openDetail: {
     marginTop: 14,

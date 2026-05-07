@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import {
   formatDateTime,
   getSupportRequestById,
+  approveSupportRequest,
   type SupportRequestDetail,
 } from '@/components/support-request/request-api';
 import {
@@ -37,6 +38,17 @@ export default function SupportRequestDetailScreen() {
     user?.role === 'REQUESTER' &&
     user.id === requestDetail.requesterId;
 
+  const canReview =
+    requestDetail?.status === 'PENDING' &&
+    (user?.role === 'ADMIN' || user?.role === 'COLLABORATOR');
+
+  const canAssign =
+    requestDetail?.status === 'APPROVED' &&
+    !requestDetail.assignedSupportLocationId &&
+    (user?.role === 'ADMIN' || user?.role === 'COLLABORATOR');
+
+  const [isActioning, setIsActioning] = useState(false);
+
   const backTarget = from === 'my' ? '/support-request-my' : '/(tabs)/requests';
 
   const loadRequestDetail = useCallback(async () => {
@@ -63,6 +75,35 @@ export default function SupportRequestDetailScreen() {
     }
   }, [id, session?.accessToken]);
 
+  const handleApprove = async () => {
+    if (!session?.accessToken || !id) return;
+    setIsActioning(true);
+    try {
+      await approveSupportRequest(session.accessToken, id);
+      await loadRequestDetail();
+    } catch (err) {
+      setError(getAuthErrorMessage(err));
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!session?.accessToken || !id) return;
+    router.push({
+      pathname: '/support-request-reject',
+      params: { id },
+    });
+  };
+
+  const handleAssign = async () => {
+    if (!session?.accessToken || !id) return;
+    router.push({
+      pathname: '/support-request-assign-location',
+      params: { id },
+    });
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadRequestDetail();
@@ -74,9 +115,9 @@ export default function SupportRequestDetailScreen() {
       title="Request Detail"
       onBackPress={() => router.push(backTarget as never)}
       rightSlot={requestDetail ? <RequestStatusBadge status={requestDetail.status} /> : undefined}>
-      
+
       {isLoading ? <Text style={styles.helperText}>Loading request detail...</Text> : null}
-      
+
       {error ? (
         <RequestCard>
           <Text style={styles.emptyTitle}>Could not load request</Text>
@@ -147,6 +188,40 @@ export default function SupportRequestDetailScreen() {
                 <Text style={styles.rejectionTitle}>Rejection Reason</Text>
                 <Text style={styles.rejectionText}>{requestDetail.rejectionReason}</Text>
               </View>
+            </View>
+          )}
+
+          {/* Action Buttons for Collaborators */}
+          {(canReview || canAssign) && (
+            <View style={styles.actionBar}>
+              {canReview && (
+                <>
+                  <View style={styles.actionButtonContainer}>
+                    <RequestButton
+                      label="Approve"
+                      onPress={handleApprove}
+                      disabled={isActioning}
+                    />
+                  </View>
+                  <View style={styles.actionButtonContainer}>
+                    <RequestButton
+                      label="Reject"
+                      onPress={handleReject}
+                      variant="outline"
+                      disabled={isActioning}
+                    />
+                  </View>
+                </>
+              )}
+              {canAssign && (
+                <View style={styles.actionButtonContainer}>
+                  <RequestButton
+                    label="Assign to Location"
+                    onPress={handleAssign}
+                    disabled={isActioning}
+                  />
+                </View>
+              )}
             </View>
           )}
 
@@ -308,5 +383,13 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
+  },
+  actionBar: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  actionButtonContainer: {
+    flex: 1,
   },
 });

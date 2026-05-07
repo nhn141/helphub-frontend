@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { Link, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
@@ -71,6 +72,7 @@ export default function LoginScreen() {
           placeholder="Email"
           textContentType="emailAddress"
           value={email}
+          leftIcon={<Feather name="mail" size={20} color={authPalette.muted} />}
         />
 
         <AuthPasswordInput
@@ -79,6 +81,7 @@ export default function LoginScreen() {
           placeholder="Password"
           textContentType="password"
           value={password}
+          leftIcon={<Feather name="lock" size={20} color={authPalette.muted} />}
         />
 
         <RememberRow onForgotPress={() => router.push('/forgot-password')} />
@@ -89,11 +92,13 @@ export default function LoginScreen() {
           disabled={isLoading || isSubmitting}
           label={isSubmitting ? 'Logging in...' : 'Log In'}
           onPress={handleLogin}
+          leftIcon={<Feather name="log-in" size={20} color="#FFFFFF" />}
         />
         <AuthButton
           label="Continue as Guest"
           onPress={() => router.push('/(tabs)')}
           variant="outline"
+          leftIcon={<Feather name="user" size={20} color={authPalette.primaryDark} />}
         />
 
         <View style={styles.footer}>

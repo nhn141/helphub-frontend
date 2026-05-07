@@ -70,6 +70,7 @@ type AuthIntroProps = {
 
 type AuthInputProps = ComponentProps<typeof TextInput> & {
   label?: string;
+  leftIcon?: ReactNode;
   rightIcon?: ReactNode;
 };
 
@@ -77,6 +78,7 @@ type AuthButtonProps = {
   label: string;
   variant?: 'primary' | 'outline';
   onPress?: () => void;
+  leftIcon?: ReactNode;
   rightIcon?: ReactNode;
   disabled?: boolean;
 };
@@ -265,11 +267,12 @@ export function AuthIntro({ title, subtitle, centered = false, compact = false }
   );
 }
 
-export function AuthInput({ label, rightIcon, style, ...props }: AuthInputProps) {
+export function AuthInput({ label, leftIcon, rightIcon, style, ...props }: AuthInputProps) {
   return (
     <View style={styles.fieldGroup}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={styles.inputShell}>
+        {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
           {...props}
           autoCorrect={false}
@@ -314,7 +317,7 @@ export function RememberRow({ onForgotPress }: { onForgotPress?: () => void }) {
   );
 }
 
-export function AuthButton({ label, variant = 'primary', onPress, rightIcon, disabled }: AuthButtonProps) {
+export function AuthButton({ label, variant = 'primary', onPress, leftIcon, rightIcon, disabled }: AuthButtonProps) {
   const isOutline = variant === 'outline';
 
   return (
@@ -328,6 +331,7 @@ export function AuthButton({ label, variant = 'primary', onPress, rightIcon, dis
         disabled && styles.buttonDisabled,
       ]}>
       <View style={styles.buttonInner}>
+        {leftIcon ? <View style={styles.buttonIcon}>{leftIcon}</View> : null}
         <Text style={[styles.buttonText, isOutline && styles.outlineButtonText]}>{label}</Text>
         {rightIcon ? <View style={styles.buttonIcon}>{rightIcon}</View> : null}
       </View>
@@ -616,6 +620,9 @@ const styles = StyleSheet.create({
     color: authPalette.text,
     fontSize: 15,
     fontFamily: Fonts.rounded,
+  },
+  leftIcon: {
+    marginRight: 12,
   },
   rightIcon: {
     marginLeft: 12,
