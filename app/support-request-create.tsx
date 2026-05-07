@@ -128,7 +128,6 @@ export default function SupportRequestCreateScreen() {
             options={categories.map((item) => ({
               label: item.name,
               value: item.id,
-              detail: item.code,
             }))}
             value={categoryId}
           />

@@ -1,6 +1,7 @@
+import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
@@ -13,10 +14,7 @@ import {
 import {
   RequestButton,
   RequestCard,
-  RequestInlineLink,
-  RequestMetaRow,
   RequestScreen,
-  RequestSection,
   RequestStatusBadge,
 } from '@/components/support-request/request-ui';
 import { Fonts } from '@/constants/theme';
@@ -76,7 +74,9 @@ export default function SupportRequestDetailScreen() {
       title="Request Detail"
       onBackPress={() => router.push(backTarget as never)}
       rightSlot={requestDetail ? <RequestStatusBadge status={requestDetail.status} /> : undefined}>
+      
       {isLoading ? <Text style={styles.helperText}>Loading request detail...</Text> : null}
+      
       {error ? (
         <RequestCard>
           <Text style={styles.emptyTitle}>Could not load request</Text>
@@ -88,120 +88,211 @@ export default function SupportRequestDetailScreen() {
       ) : null}
 
       {requestDetail ? (
-        <>
-          <RequestSection
-            title="Overview"
-            action={
-              canEdit ? (
-                <RequestInlineLink
-                  label="Edit"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/support-request-edit',
-                      params: { id: requestDetail.id },
-                    })
-                  }
-                />
-              ) : undefined
-            }>
-            <RequestCard>
+        <RequestCard>
+          {/* Header */}
+          <View style={styles.headerRow}>
+            <View style={styles.headerText}>
               <Text style={styles.category}>{requestDetail.categoryName}</Text>
               <Text style={styles.title}>{requestDetail.title}</Text>
-              <Text style={styles.description}>{requestDetail.description}</Text>
+            </View>
+            {canEdit && (
+              <Pressable
+                style={styles.editIcon}
+                onPress={() =>
+                  router.push({
+                    pathname: '/support-request-edit',
+                    params: { id: requestDetail.id },
+                  })
+                }>
+                <Feather name="edit-2" size={16} color={authPalette.muted} />
+              </Pressable>
+            )}
+          </View>
 
-              <View style={styles.metaStack}>
-                <RequestMetaRow icon="user" label="Requester" value={requestDetail.requesterName} />
-                <RequestMetaRow icon="clock" label="Created At" value={formatDateTime(requestDetail.createdAt)} />
+          {/* Requester Info */}
+          <View style={styles.authorRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {requestDetail.requesterName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.authorName}>{requestDetail.requesterName}</Text>
+              <Text style={styles.timeText}>{formatDateTime(requestDetail.createdAt)}</Text>
+            </View>
+          </View>
+
+          {/* Content */}
+          <Text style={styles.description}>{requestDetail.description}</Text>
+
+          {/* Metadata Box (Location, Assignment) */}
+          <View style={styles.infoBox}>
+            <View style={styles.infoRow}>
+              <Feather name="map-pin" size={16} color={authPalette.primaryDark} />
+              <Text style={styles.infoText}>{requestDetail.address || 'No address provided'}</Text>
+            </View>
+            {requestDetail.assignedSupportLocationName && (
+              <View style={styles.infoRow}>
+                <Feather name="home" size={16} color={authPalette.primaryDark} />
+                <Text style={styles.infoText}>Assigned to: {requestDetail.assignedSupportLocationName}</Text>
               </View>
-            </RequestCard>
-          </RequestSection>
+            )}
+          </View>
 
-          <RequestSection title="Location">
-            <RequestCard>
-              <View style={styles.metaStackCompact}>
-                <RequestMetaRow
-                  icon="map-pin"
-                  label="Address"
-                  value={requestDetail.address ?? 'Not provided'}
-                />
-                <RequestMetaRow
-                  icon="navigation"
-                  label="Coordinates"
-                  value={
-                    requestDetail.latitude != null && requestDetail.longitude != null
-                      ? `${requestDetail.latitude}, ${requestDetail.longitude}`
-                      : 'Not provided'
-                  }
-                />
+          {/* Rejection Reason */}
+          {requestDetail.rejectionReason && (
+            <View style={styles.rejectionBox}>
+              <Feather name="alert-triangle" size={16} color="#D92D20" />
+              <View style={styles.rejectionContent}>
+                <Text style={styles.rejectionTitle}>Rejection Reason</Text>
+                <Text style={styles.rejectionText}>{requestDetail.rejectionReason}</Text>
               </View>
-            </RequestCard>
-          </RequestSection>
+            </View>
+          )}
 
-          <RequestSection title="Assignment">
-            <RequestCard>
-              <View style={styles.metaStackCompact}>
-                <RequestMetaRow
-                  icon="home"
-                  label="Support Location"
-                  value={requestDetail.assignedSupportLocationName ?? 'Not assigned yet'}
-                />
-                <RequestMetaRow
-                  icon="check-circle"
-                  label="Reviewed At"
-                  value={formatDateTime(requestDetail.reviewedAt)}
-                />
-              </View>
-            </RequestCard>
-          </RequestSection>
+          <View style={styles.divider} />
 
-          {requestDetail.rejectionReason ? (
-            <RequestSection title="Rejection Reason">
-              <RequestCard>
-                <Text style={styles.description}>{requestDetail.rejectionReason}</Text>
-              </RequestCard>
-            </RequestSection>
-          ) : null}
-
-          <RequestSection title="Timeline">
-            <RequestCard>
-              <View style={styles.metaStackCompact}>
-                <RequestMetaRow icon="clock" label="Created At" value={formatDateTime(requestDetail.createdAt)} />
-                <RequestMetaRow icon="refresh-cw" label="Updated At" value={formatDateTime(requestDetail.updatedAt)} />
-              </View>
-            </RequestCard>
-          </RequestSection>
-        </>
+          {/* Compact Timeline */}
+          <View style={styles.timelineRow}>
+            <Text style={styles.timelineText}>Created: {formatDateTime(requestDetail.createdAt)}</Text>
+            {requestDetail.updatedAt !== requestDetail.createdAt && (
+              <Text style={styles.timelineText}> • Updated: {formatDateTime(requestDetail.updatedAt)}</Text>
+            )}
+            {requestDetail.reviewedAt && (
+              <Text style={styles.timelineText}> • Reviewed: {formatDateTime(requestDetail.reviewedAt)}</Text>
+            )}
+          </View>
+        </RequestCard>
       ) : null}
     </RequestScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  headerText: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  editIcon: {
+    padding: 8,
+    backgroundColor: '#F6FAF6',
+    borderRadius: 8,
+  },
   category: {
     fontSize: 13,
     color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   title: {
-    marginTop: 8,
     fontSize: 22,
     lineHeight: 30,
     color: authPalette.text,
     fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
   },
-  description: {
-    marginTop: 10,
-    fontSize: 14,
-    lineHeight: 22,
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E6F4EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 16,
+    color: authPalette.primaryDark,
+    fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
+  },
+  authorName: {
+    fontSize: 15,
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
+  },
+  timeText: {
+    fontSize: 13,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
+    marginTop: 2,
   },
-  metaStack: {
-    marginTop: 18,
-    gap: 14,
+  description: {
+    fontSize: 15,
+    lineHeight: 24,
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    marginBottom: 20,
   },
-  metaStackCompact: {
-    gap: 14,
+  infoBox: {
+    backgroundColor: '#F9FCF9',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+  },
+  rejectionBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FEF3F2',
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 16,
+  },
+  rejectionContent: {
+    flex: 1,
+  },
+  rejectionTitle: {
+    fontSize: 14,
+    color: '#D92D20',
+    fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  rejectionText: {
+    fontSize: 14,
+    color: '#D92D20',
+    fontFamily: Fonts.rounded,
+    lineHeight: 20,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F5F1',
+    marginVertical: 16,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  timelineText: {
+    fontSize: 12,
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
   },
   helperText: {
     fontSize: 14,

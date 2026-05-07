@@ -12,12 +12,115 @@ import { Fonts } from '@/constants/theme';
 import {
   getAllPosts,
   getMyPosts,
+  getCommentsByPost,
+  getReactionCount,
   formatPostDateTime,
   type PostSummary,
 } from '@/components/post/post-api';
 import { PostLoading, PostError } from '@/components/post/post-ui';
 
 type PostFilter = 'ALL' | 'MY_POSTS' | 'PUBLIC' | 'VOLUNTEERS_ONLY';
+
+function PostFeedCard({ item, role, session }: { item: PostSummary; role: string; session: any }) {
+  const router = useRouter();
+  const [reactionCount, setReactionCount] = useState(0);
+  const [commentCount, setCommentCount] = useState(0);
+
+  useEffect(() => {
+    if (!session?.accessToken) return;
+    let isMounted = true;
+
+    Promise.all([
+      getReactionCount(session.accessToken, item.id).catch(() => ({ totalCount: 0 })),
+      getCommentsByPost(session.accessToken, item.id).catch(() => []),
+    ]).then(([reactions, comments]) => {
+      if (isMounted) {
+        setReactionCount(reactions.totalCount || 0);
+        setCommentCount(comments.length || 0);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [session?.accessToken, item.id]);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push(`/post-detail?id=${item.id}`)}
+      style={styles.postCard}>
+      
+      <View style={styles.postHeader}>
+        <View style={styles.postAvatar}>
+          <Text style={styles.postAvatarText}>
+            {item.authorName.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.postMeta}>
+          <Text style={styles.postAuthorName}>{item.authorName}</Text>
+          <View style={styles.postTimeRow}>
+            <Text style={styles.postTime}>{formatPostDateTime(item.createdAt)}</Text>
+            <Text style={styles.postTimeDot}>•</Text>
+            <Feather
+              name={item.visibility === 'PUBLIC' ? 'globe' : 'users'}
+              size={12}
+              color={authPalette.muted}
+            />
+          </View>
+        </View>
+        <Feather name="more-horizontal" size={20} color={authPalette.muted} />
+      </View>
+
+      <Text style={styles.postContent} numberOfLines={4}>
+        {item.content}
+      </Text>
+
+      {item.supportRequestTitle ? (
+        <View style={styles.supportTag}>
+          <Feather name="link" size={14} color={authPalette.primaryDark} />
+          <Text style={styles.supportTagText} numberOfLines={1}>
+            {item.supportRequestTitle}
+          </Text>
+        </View>
+      ) : null}
+
+      {/* Stats Row */}
+      {(reactionCount > 0 || commentCount > 0) ? (
+        <View style={styles.postStatsRow}>
+          {reactionCount > 0 ? (
+            <View style={styles.statItem}>
+              <View style={styles.reactionIconBg}>
+                <Text style={styles.reactionIconText}>👍</Text>
+              </View>
+              <Text style={styles.statText}>{reactionCount}</Text>
+            </View>
+          ) : <View />}
+          {commentCount > 0 ? (
+            <Text style={styles.statText}>{commentCount} comments</Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      <View style={styles.postDivider} />
+
+      <View style={styles.postActions}>
+        <View style={styles.actionButton}>
+          <Feather name="thumbs-up" size={18} color={authPalette.muted} />
+          <Text style={styles.actionText}>React</Text>
+        </View>
+        <View style={styles.actionButton}>
+          <Feather name="message-circle" size={18} color={authPalette.muted} />
+          <Text style={styles.actionText}>Comment</Text>
+        </View>
+        <View style={styles.actionButton}>
+          <Feather name="share-2" size={18} color={authPalette.muted} />
+          <Text style={styles.actionText}>Share</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 export default function PostsTabScreen() {
   const router = useRouter();
@@ -131,64 +234,7 @@ export default function PostsTabScreen() {
           ) : null}
 
           {filteredPosts.map((item) => (
-            <Pressable
-              key={item.id}
-              accessibilityRole="button"
-              onPress={() => router.push(`/post-detail?id=${item.id}`)}
-              style={styles.postCard}>
-
-              <View style={styles.postHeader}>
-                <View style={styles.postAvatar}>
-                  <Text style={styles.postAvatarText}>
-                    {item.authorName.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.postMeta}>
-                  <Text style={styles.postAuthorName}>{item.authorName}</Text>
-                  <View style={styles.postTimeRow}>
-                    <Text style={styles.postTime}>{formatPostDateTime(item.createdAt)}</Text>
-                    <Text style={styles.postTimeDot}>•</Text>
-                    <Feather
-                      name={item.visibility === 'PUBLIC' ? 'globe' : 'users'}
-                      size={12}
-                      color={authPalette.muted}
-                    />
-                  </View>
-                </View>
-                <Feather name="more-horizontal" size={20} color={authPalette.muted} />
-              </View>
-
-              <Text style={styles.postContent} numberOfLines={4}>
-                {item.content}
-              </Text>
-
-              {item.supportRequestTitle ? (
-                <View style={styles.supportTag}>
-                  <Feather name="link" size={14} color={authPalette.primaryDark} />
-                  <Text style={styles.supportTagText} numberOfLines={1}>
-                    {item.supportRequestTitle}
-                  </Text>
-                </View>
-              ) : null}
-
-              <View style={styles.postDivider} />
-
-              <View style={styles.postActions}>
-                <View style={styles.actionButton}>
-                  <Feather name="thumbs-up" size={18} color={authPalette.muted} />
-                  <Text style={styles.actionText}>React</Text>
-                </View>
-                <View style={styles.actionButton}>
-                  <Feather name="message-circle" size={18} color={authPalette.muted} />
-                  <Text style={styles.actionText}>Comment</Text>
-                </View>
-                <View style={styles.actionButton}>
-                  <Feather name="share-2" size={18} color={authPalette.muted} />
-                  <Text style={styles.actionText}>Share</Text>
-                </View>
-              </View>
-
-            </Pressable>
+            <PostFeedCard key={item.id} item={item} role={role} session={session} />
           ))}
         </View>
       ) : null}
@@ -344,10 +390,40 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     maxWidth: 250,
   },
+  postStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  reactionIconBg: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EDF2ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  reactionIconText: {
+    fontSize: 10,
+  },
+  statText: {
+    fontSize: 13,
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+  },
   postDivider: {
     height: 1,
     backgroundColor: '#F0F5F1',
-    marginTop: 16,
+    marginTop: 12,
     marginBottom: 12,
   },
   postActions: {
