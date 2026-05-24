@@ -1,8 +1,10 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 
 import { authPalette } from '@/components/auth/auth-ui';
+import { useAuth } from '@/components/auth/auth-provider';
+import { connectChatRealtime, getUnreadNotificationCount } from '@/components/chat/chat-api';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { HapticTab } from '@/components/haptic-tab';
 import { canManageCategories, canManageSupportLocations } from '@/constants/role-access';
@@ -10,6 +12,47 @@ import { Fonts } from '@/constants/theme';
 
 export default function TabLayout() {
   const { role } = useDemoRole();
+  const { session } = useAuth();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      setUnreadNotifications(0);
+      return;
+    }
+
+    let isActive = true;
+
+    getUnreadNotificationCount(session.accessToken)
+      .then((response) => {
+        if (isActive) {
+          setUnreadNotifications(Number(response.unreadCount ?? 0));
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setUnreadNotifications(0);
+        }
+      });
+
+    const connection = connectChatRealtime(
+      session.accessToken,
+      {
+        onNotification(payload) {
+          setUnreadNotifications(Number(payload.unreadCount ?? 0));
+        },
+      },
+      {
+        messages: false,
+        notifications: true,
+      }
+    );
+
+    return () => {
+      isActive = false;
+      connection.disconnect();
+    };
+  }, [session?.accessToken]);
 
   return (
     <Tabs
@@ -48,7 +91,27 @@ export default function TabLayout() {
         name="posts"
         options={{
           title: 'Posts',
+          tabBarIcon: ({ color }) => <Feather size={20} name="file-text" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
           tabBarIcon: ({ color }) => <Feather size={20} name="message-circle" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Notifications',
+          tabBarBadge:
+            unreadNotifications > 0
+              ? unreadNotifications > 99
+                ? '99+'
+                : unreadNotifications
+              : undefined,
+          tabBarIcon: ({ color }) => <Feather size={20} name="bell" color={color} />,
         }}
       />
       <Tabs.Screen

@@ -204,7 +204,7 @@ export default function PostsTabScreen() {
           </Text>
         </View>
         <View style={styles.composerInput}>
-          <Text style={styles.composerInputText}>What's on your mind?</Text>
+          <Text style={styles.composerInputText}>{"What's on your mind?"}</Text>
         </View>
         <Feather name="image" size={24} color={authPalette.primaryDark} />
       </Pressable>
