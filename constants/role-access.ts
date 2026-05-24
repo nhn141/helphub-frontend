@@ -22,7 +22,7 @@ export function canManageCategories(role: AppRole) {
 }
 
 export function canManageSupportLocations(role: AppRole) {
-  return role === 'COLLABORATOR';
+  return role === 'ADMIN' || role === 'COLLABORATOR';
 }
 
 export function canManageUsers(role: AppRole) {

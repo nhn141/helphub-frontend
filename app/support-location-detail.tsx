@@ -1,10 +1,19 @@
-import { useRouter } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
-import { supportLocationDetail } from '@/components/management/support-location-mocks';
+import { useAuth } from '@/components/auth/auth-provider';
+import {
+  formatCoordinate,
+  formatLocationDateTime,
+  getSupportLocationById,
+  type SupportLocationDetail,
+} from '@/components/management/support-location-api';
 import {
   ManagementBadge,
+  ManagementButton,
   ManagementCard,
   ManagementInlineLink,
   ManagementMetaRow,
@@ -13,73 +22,173 @@ import {
 } from '@/components/management/management-ui';
 import { Fonts } from '@/constants/theme';
 
+function getStringParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default function SupportLocationDetailScreen() {
-  const router = useRouter();
+  const params = useLocalSearchParams();
+  const id = getStringParam(params.id);
+  const { session } = useAuth();
+  const [location, setLocation] = useState<SupportLocationDetail | null>(null);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadLocation = useCallback(async () => {
+    if (!session?.accessToken) {
+      router.replace('/login' as never);
+      return;
+    }
+
+    if (!id) {
+      setError('Missing support location id.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const data = await getSupportLocationById(session.accessToken, id);
+      setLocation(data);
+    } catch (locationError) {
+      setError(getAuthErrorMessage(locationError));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, session?.accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLocation();
+    }, [loadLocation])
+  );
+
+  const detailParams = id ? { id } : undefined;
 
   return (
     <ManagementScreen
       title="Support Location"
       onBackPress={() => router.push('/(tabs)/support-locations')}
       rightSlot={
-        <ManagementBadge
-          label={supportLocationDetail.isActive ? 'ACTIVE' : 'INACTIVE'}
-          tone={supportLocationDetail.isActive ? 'green' : 'slate'}
-        />
-      }>
-      <ManagementSection
-        title="Overview"
-        action={<ManagementInlineLink label="Edit" onPress={() => router.push('/support-location-edit')} />}>
-        <ManagementCard>
-          <Text style={styles.category}>{supportLocationDetail.categoryName}</Text>
-          <Text style={styles.title}>{supportLocationDetail.name}</Text>
-          <Text style={styles.description}>{supportLocationDetail.description}</Text>
-        </ManagementCard>
-      </ManagementSection>
-
-      <ManagementSection
-        title="Contact"
-        action={<ManagementInlineLink label="Status" onPress={() => router.push('/support-location-status')} />}>
-        <ManagementCard>
-          <View style={styles.metaStack}>
-            <ManagementMetaRow icon="map-pin" label="Address" value={supportLocationDetail.address} />
-            <ManagementMetaRow icon="phone" label="Phone" value={supportLocationDetail.contactPhone} />
-          </View>
-        </ManagementCard>
-      </ManagementSection>
-
-      <ManagementSection title="Funding">
-        <ManagementCard>
-          <View style={styles.metaStack}>
-            <ManagementMetaRow icon="credit-card" label="Bank" value={supportLocationDetail.bankName} />
-            <ManagementMetaRow
-              icon="hash"
-              label="Account Number"
-              value={supportLocationDetail.bankAccountNumber}
-            />
-          </View>
-        </ManagementCard>
-      </ManagementSection>
-
-      <ManagementSection
-        title="Assignments"
-        action={
-          <ManagementInlineLink
-            label="Assign Request"
-            onPress={() => router.push('/support-location-assign-request')}
+        location ? (
+          <ManagementBadge
+            label={location.isActive ? 'ACTIVE' : 'INACTIVE'}
+            tone={location.isActive ? 'green' : 'slate'}
           />
-        }>
+        ) : undefined
+      }>
+      {isLoading ? <Text style={styles.helperText}>Loading support location...</Text> : null}
+
+      {error ? (
         <ManagementCard>
-          <View style={styles.metaStack}>
-            <ManagementMetaRow
-              icon="clipboard"
-              label="Assigned Requests"
-              value={`${supportLocationDetail.assignedRequests} active requests`}
-            />
-            <ManagementMetaRow icon="clock" label="Created At" value={supportLocationDetail.createdAt} />
-            <ManagementMetaRow icon="refresh-cw" label="Updated At" value={supportLocationDetail.updatedAt} />
+          <Text style={styles.emptyTitle}>Could not load location</Text>
+          <Text style={styles.helperText}>{error}</Text>
+          <View style={styles.retryButton}>
+            <ManagementButton label="Try Again" onPress={loadLocation} variant="outline" />
           </View>
         </ManagementCard>
-      </ManagementSection>
+      ) : null}
+
+      {location ? (
+        <>
+          <ManagementSection
+            title="Overview"
+            action={
+              <ManagementInlineLink
+                label="Edit"
+                onPress={() =>
+                  router.push({
+                    pathname: '/support-location-edit',
+                    params: detailParams,
+                  })
+                }
+              />
+            }>
+            <ManagementCard>
+              <Text style={styles.category}>Created by {location.createdByName}</Text>
+              <Text style={styles.title}>{location.name}</Text>
+              <Text style={styles.description}>{location.description}</Text>
+            </ManagementCard>
+          </ManagementSection>
+
+          <ManagementSection
+            title="Contact"
+            action={
+              <ManagementInlineLink
+                label="Status"
+                onPress={() =>
+                  router.push({
+                    pathname: '/support-location-status',
+                    params: detailParams,
+                  })
+                }
+              />
+            }>
+            <ManagementCard>
+              <View style={styles.metaStack}>
+                <ManagementMetaRow icon="map-pin" label="Address" value={location.address} />
+                <ManagementMetaRow
+                  icon="navigation"
+                  label="Coordinates"
+                  value={`${formatCoordinate(location.latitude)}, ${formatCoordinate(location.longitude)}`}
+                />
+                <ManagementMetaRow
+                  icon="phone"
+                  label="Phone"
+                  value={location.contactPhone ?? 'Not provided'}
+                />
+              </View>
+            </ManagementCard>
+          </ManagementSection>
+
+          <ManagementSection title="Funding">
+            <ManagementCard>
+              <View style={styles.metaStack}>
+                <ManagementMetaRow
+                  icon="credit-card"
+                  label="Bank"
+                  value={location.bankName ?? 'Not provided'}
+                />
+                <ManagementMetaRow
+                  icon="hash"
+                  label="Account Number"
+                  value={location.bankAccountNumber ?? 'Not provided'}
+                />
+              </View>
+            </ManagementCard>
+          </ManagementSection>
+
+          <ManagementSection
+            title="Assignments"
+            action={
+              <ManagementInlineLink
+                label="Assign Request"
+                onPress={() =>
+                  router.push({
+                    pathname: '/support-location-assign-request',
+                    params: detailParams,
+                  })
+                }
+              />
+            }>
+            <ManagementCard>
+              <View style={styles.metaStack}>
+                <ManagementMetaRow
+                  icon="clock"
+                  label="Created At"
+                  value={formatLocationDateTime(location.createdAt)}
+                />
+                <ManagementMetaRow
+                  icon="refresh-cw"
+                  label="Updated At"
+                  value={formatLocationDateTime(location.updatedAt)}
+                />
+              </View>
+            </ManagementCard>
+          </ManagementSection>
+        </>
+      ) : null}
     </ManagementScreen>
   );
 }
@@ -106,5 +215,20 @@ const styles = StyleSheet.create({
   },
   metaStack: {
     gap: 14,
+  },
+  helperText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+  },
+  emptyTitle: {
+    marginBottom: 8,
+    fontSize: 16,
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+  },
+  retryButton: {
+    marginTop: 16,
   },
 });

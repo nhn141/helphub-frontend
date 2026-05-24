@@ -42,6 +42,7 @@ type ManagementButtonProps = {
   variant?: 'primary' | 'outline' | 'danger';
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  disabled?: boolean;
 };
 
 export function ManagementScreen({
@@ -152,16 +153,19 @@ export function ManagementButton({
   variant = 'primary',
   leftIcon,
   rightIcon,
+  disabled,
 }: ManagementButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
       style={[
         styles.button,
         variant === 'primary' && styles.buttonPrimary,
         variant === 'outline' && styles.buttonOutline,
         variant === 'danger' && styles.buttonDanger,
+        disabled && styles.buttonDisabled,
       ]}>
       <View style={styles.buttonInner}>
         {leftIcon ? <View style={styles.buttonIcon}>{leftIcon}</View> : null}
@@ -461,6 +465,9 @@ const styles = StyleSheet.create({
   },
   buttonDanger: {
     backgroundColor: '#B94540',
+  },
+  buttonDisabled: {
+    opacity: 0.62,
   },
   buttonInner: {
     flexDirection: 'row',
