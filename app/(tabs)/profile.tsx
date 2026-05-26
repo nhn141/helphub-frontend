@@ -7,6 +7,7 @@ import { Badge, DashboardScreen, SurfaceCard } from '@/components/dashboard/tab-
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
@@ -45,9 +46,14 @@ export default function ProfileTabScreen() {
       rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
       <SurfaceCard>
         <View style={styles.profileTop}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials || 'HH'}</Text>
-          </View>
+          <UserAvatar
+            fallback={initials || 'HH'}
+            name={displayName}
+            size={58}
+            style={styles.avatar}
+            textSize={18}
+            uri={user?.avatarUrl}
+          />
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.email}>{displayEmail}</Text>
@@ -64,6 +70,16 @@ export default function ProfileTabScreen() {
             <Text style={styles.metaText}>Last login: {user?.lastLoginAt ?? 'Not available'}</Text>
           </View>
         </View>
+
+        {isAuthenticated ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/profile-edit')}
+            style={styles.profileButton}>
+            <Feather name="edit-2" size={16} color={authPalette.primaryDark} />
+            <Text style={styles.profileButtonText}>Edit profile</Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"
@@ -93,6 +109,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDF5E8',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
   },
   avatarText: {
     fontSize: 18,
@@ -127,8 +148,24 @@ const styles = StyleSheet.create({
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
   },
-  logoutButton: {
+  profileButton: {
     marginTop: 24,
+    minHeight: 44,
+    borderRadius: 22,
+    borderWidth: 1.4,
+    borderColor: authPalette.outline,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  profileButtonText: {
+    fontSize: 14,
+    color: authPalette.primaryDark,
+    fontFamily: Fonts.rounded,
+  },
+  logoutButton: {
+    marginTop: 12,
     minHeight: 44,
     borderRadius: 22,
     borderWidth: 1.4,

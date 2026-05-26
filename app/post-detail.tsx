@@ -24,7 +24,6 @@ import {
   type PostReactionType,
 } from '@/components/post/post-api';
 import {
-  PostButton,
   PostCard,
   PostCommentBubble,
   PostCommentInput,
@@ -35,6 +34,7 @@ import {
   PostScreen,
   PostStatusBadge,
 } from '@/components/post/post-ui';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 export default function PostDetailScreen() {
@@ -213,11 +213,13 @@ export default function PostDetailScreen() {
       <PostCard>
         {/* Post Header */}
         <View style={styles.postHeader}>
-          <View style={styles.authorAvatar}>
-            <Text style={styles.authorInitials}>
-              {post.authorName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          <UserAvatar
+            name={post.authorName}
+            size={44}
+            style={styles.authorAvatar}
+            textSize={18}
+            uri={post.authorAvatarUrl}
+          />
           <View style={styles.headerText}>
             <Text style={styles.authorName}>{post.authorName}</Text>
             <View style={styles.metaRow}>
@@ -294,6 +296,7 @@ export default function PostDetailScreen() {
               <PostCommentBubble
                 key={comment.id}
                 userName={comment.userName}
+                avatarUrl={comment.userAvatarUrl}
                 content={comment.content}
                 createdAt={formatPostDateTime(comment.createdAt)}
                 isOwn={user?.id === comment.userId}

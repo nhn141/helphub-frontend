@@ -22,6 +22,7 @@ import {
   PostStatusBadge,
   PostVisibilityBadge,
 } from '@/components/post/post-ui';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 export default function PostDeleteScreen() {
@@ -110,8 +111,22 @@ export default function PostDeleteScreen() {
             <Text style={styles.title}>{post.supportRequestTitle}</Text>
           ) : null}
           <Text style={styles.content} numberOfLines={3}>{post.content}</Text>
+          <View style={styles.authorRow}>
+            <UserAvatar
+              name={post.authorName}
+              size={36}
+              style={styles.authorAvatar}
+              textSize={14}
+              uri={post.authorAvatarUrl}
+            />
+            <View style={styles.authorText}>
+              <Text style={styles.authorLabel}>Author</Text>
+              <Text style={styles.authorName} numberOfLines={1}>
+                {post.authorName}
+              </Text>
+            </View>
+          </View>
           <View style={styles.metaStack}>
-            <PostMetaRow icon="user" label="Author" value={post.authorName} />
             <PostMetaRow
               icon="clock"
               label="Updated At"
@@ -167,6 +182,30 @@ const styles = StyleSheet.create({
   metaStack: {
     marginTop: 18,
     gap: 14,
+  },
+  authorRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  authorAvatar: {
+    backgroundColor: '#E6F4EB',
+  },
+  authorText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  authorLabel: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
+  },
+  authorName: {
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    marginTop: 2,
   },
   noticeRow: {
     flexDirection: 'row',

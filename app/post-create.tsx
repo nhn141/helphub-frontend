@@ -1,16 +1,21 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
 import {
   attachMediaToPost,
-  createMediaRecord,
   createPost,
   type PostVisibility,
 } from '@/components/post/post-api';
+import {
+  pickImagesFromLibrary,
+  uploadImageAndCreateMediaRecord,
+  type PickedImage,
+} from '@/components/media/media-api';
+import { OpenableImage } from '@/components/media/image-viewer';
 import {
   PostButton,
   PostCard,
@@ -35,7 +40,8 @@ export default function PostCreateScreen() {
   const [supportRequestId, setSupportRequestId] = useState<string>('');
   const [supportRequests, setSupportRequests] = useState<SupportRequestSummary[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(true);
-  const [attachMockMedia, setAttachMockMedia] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<PickedImage[]>([]);
+  const [pickingImage, setPickingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +63,36 @@ export default function PostCreateScreen() {
     loadRequests();
   }, [session?.accessToken]);
 
+  const handlePickImage = useCallback(async () => {
+    if (pickingImage) return;
+
+    setPickingImage(true);
+    setError(null);
+
+    try {
+      const images = await pickImagesFromLibrary({
+        allowsMultipleSelection: true,
+        selectionLimit: 10,
+        aspect: [4, 3],
+      });
+
+      if (images.length > 0) {
+        setSelectedImages((current) => {
+          const existingUris = new Set(current.map((item) => item.uri));
+          const nextImages = images.filter((item) => !existingUris.has(item.uri));
+
+          return [...current, ...nextImages].slice(0, 10);
+        });
+      }
+    } catch (err: any) {
+      const message = err?.message ?? 'Could not choose an image.';
+      setError(message);
+      Alert.alert('Image picker', message);
+    } finally {
+      setPickingImage(false);
+    }
+  }, [pickingImage]);
+
   const handleCreate = useCallback(async () => {
     if (!session?.accessToken || content.trim().length === 0) return;
 
@@ -70,21 +106,25 @@ export default function PostCreateScreen() {
         supportRequestId: supportRequestId || null,
       });
 
-      if (attachMockMedia) {
-        const mediaRecord = await createMediaRecord(session.accessToken, {
-          fileName: 'mock-image.jpg',
-          fileUrl: 'https://picsum.photos/seed/' + newPost.id + '/800/600',
-          fileType: 'IMAGE',
-          mimeType: 'image/jpeg',
-          fileSize: 102400,
-          altText: 'Mock random image',
-          isPublic: visibility === 'PUBLIC',
-        });
-        
-        await attachMediaToPost(session.accessToken, newPost.id, {
-          mediaId: mediaRecord.id,
-          displayOrder: 1,
-        });
+      if (selectedImages.length > 0) {
+        const mediaRecords = await Promise.all(
+          selectedImages.map((image, index) =>
+            uploadImageAndCreateMediaRecord(session.accessToken, image, {
+              altText: `Post image ${index + 1}`,
+              folder: 'helphub/posts',
+              isPublic: visibility === 'PUBLIC',
+            })
+          )
+        );
+
+        await Promise.all(
+          mediaRecords.map((mediaRecord, index) =>
+            attachMediaToPost(session.accessToken, newPost.id, {
+              mediaId: mediaRecord.id,
+              displayOrder: index + 1,
+            })
+          )
+        );
       }
 
       router.push(`/post-detail?id=${newPost.id}`);
@@ -94,7 +134,7 @@ export default function PostCreateScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [session?.accessToken, content, visibility, supportRequestId, attachMockMedia, router]);
+  }, [session?.accessToken, content, visibility, supportRequestId, selectedImages, router]);
 
   const toggleVisibility = () => {
     setVisibility((prev) => (prev === 'PUBLIC' ? 'VOLUNTEERS_ONLY' : 'PUBLIC'));
@@ -130,17 +170,34 @@ export default function PostCreateScreen() {
           style={styles.composerInput}
         />
 
-        {attachMockMedia ? (
-          <View style={styles.mediaPreview}>
-            <Feather name="image" size={32} color={authPalette.muted} />
-            <Text style={styles.mediaPreviewText}>Mock Image Attached</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setAttachMockMedia(false)}
-              style={styles.mediaRemoveBtn}>
-              <Feather name="x" size={16} color="#FFFFFF" />
-            </Pressable>
-          </View>
+        {selectedImages.length > 0 ? (
+          <ScrollView
+            horizontal
+            contentContainerStyle={styles.mediaPreviewList}
+            showsHorizontalScrollIndicator={false}
+            style={styles.mediaPreviewScroll}>
+            {selectedImages.map((image, index) => (
+              <View key={`${image.uri}-${index}`} style={styles.mediaPreview}>
+                <OpenableImage
+                  accessibilityLabel={`Selected image ${index + 1}`}
+                  altText={`Selected image ${index + 1}`}
+                  style={styles.mediaPreviewImage}
+                  uri={image.uri}
+                />
+                <Text style={styles.mediaPreviewText}>{index + 1}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    setSelectedImages((current) =>
+                      current.filter((_, itemIndex) => itemIndex !== index)
+                    )
+                  }
+                  style={styles.mediaRemoveBtn}>
+                  <Feather name="x" size={16} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
         ) : null}
 
         <View style={styles.divider} />
@@ -148,14 +205,21 @@ export default function PostCreateScreen() {
         <View style={styles.actionRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={() => setAttachMockMedia(!attachMockMedia)}
+            onPress={handlePickImage}
             style={styles.actionIconBtn}>
             <Feather
               name="image"
               size={24}
-              color={attachMockMedia ? authPalette.primaryDark : authPalette.muted}
+              color={selectedImages.length > 0 ? authPalette.primaryDark : authPalette.muted}
             />
           </Pressable>
+          <Text style={styles.actionText}>
+            {pickingImage
+              ? 'Opening library...'
+              : selectedImages.length > 0
+                ? `${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} selected`
+                : 'Add images'}
+          </Text>
         </View>
       </PostCard>
 
@@ -228,18 +292,33 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     textAlignVertical: 'top',
   },
+  mediaPreviewScroll: {
+    marginTop: 12,
+  },
+  mediaPreviewList: {
+    gap: 10,
+    paddingRight: 2,
+  },
   mediaPreview: {
     height: 160,
+    width: 220,
     borderRadius: 14,
     backgroundColor: '#F0F5F1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    overflow: 'hidden',
+  },
+  mediaPreviewImage: {
+    ...StyleSheet.absoluteFillObject,
   },
   mediaPreviewText: {
+    backgroundColor: 'rgba(0,0,0,0.48)',
+    borderRadius: 999,
+    color: '#FFFFFF',
     marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     fontSize: 13,
-    color: authPalette.muted,
     fontFamily: Fonts.rounded,
   },
   mediaRemoveBtn: {
@@ -261,9 +340,15 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   actionIconBtn: {
     padding: 4,
+  },
+  actionText: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
   },
   buttonStack: {
     gap: 12,

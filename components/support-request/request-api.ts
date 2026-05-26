@@ -24,6 +24,7 @@ export type SupportRequestSummary = {
   categoryId: string;
   requesterId: string;
   requesterName: string;
+  requesterAvatarUrl?: string | null;
   status: SupportRequestStatus;
   address: string | null;
   latitude: number | null;

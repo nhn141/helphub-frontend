@@ -6,9 +6,11 @@ import {
   login as loginRequest,
   refreshToken,
   register as registerRequest,
+  updateMyProfile,
   type AuthSession,
   type LoginPayload,
   type RegisterPayload,
+  type UpdateProfilePayload,
   type UserProfile,
 } from '@/components/auth/auth-api';
 import {
@@ -26,6 +28,7 @@ type AuthContextValue = {
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<AuthSession | null>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<UserProfile>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -143,6 +146,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return freshAuth.session;
   }, [session]);
 
+  const updateProfile = useCallback(
+    async (payload: UpdateProfilePayload) => {
+      if (!session) {
+        throw new ApiError('You must be logged in to update your profile.', 401);
+      }
+
+      const profile = await updateMyProfile(session.accessToken, payload);
+      setUser(profile);
+
+      return profile;
+    },
+    [session]
+  );
+
   const value = useMemo(
     () => ({
       session,
@@ -153,8 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       refreshSession,
+      updateProfile,
     }),
-    [session, user, isLoading, login, register, logout, refreshSession]
+    [session, user, isLoading, login, register, logout, refreshSession, updateProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

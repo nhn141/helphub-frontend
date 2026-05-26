@@ -6,6 +6,7 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
+import { UserAvatar } from '@/components/user/user-avatar';
 import {
   formatDateTime,
   getSupportRequestById,
@@ -152,11 +153,13 @@ export default function SupportRequestDetailScreen() {
 
           {/* Requester Info */}
           <View style={styles.authorRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {requestDetail.requesterName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+            <UserAvatar
+              name={requestDetail.requesterName}
+              size={40}
+              style={styles.avatar}
+              textSize={16}
+              uri={requestDetail.requesterAvatarUrl}
+            />
             <View>
               <Text style={styles.authorName}>{requestDetail.requesterName}</Text>
               <Text style={styles.timeText}>{formatDateTime(requestDetail.createdAt)}</Text>

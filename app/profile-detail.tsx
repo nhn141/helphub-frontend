@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
-import { myProfile } from '@/components/management/user-mocks';
 import {
   ManagementBadge,
   ManagementButton,
@@ -12,25 +12,52 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 export default function ProfileDetailScreen() {
   const router = useRouter();
+  const { isAuthenticated, user } = useAuth();
+  const initials = (user?.fullName || user?.email || 'HH')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  if (!isAuthenticated || !user) {
+    return (
+      <ManagementScreen title="My Profile" onBackPress={() => router.push('/(tabs)/profile')}>
+        <ManagementSection title="Overview">
+          <ManagementCard>
+            <Text style={styles.emptyText}>Please log in to view your live profile.</Text>
+          </ManagementCard>
+        </ManagementSection>
+        <ManagementButton label="Back to Login" onPress={() => router.replace('/login' as never)} />
+      </ManagementScreen>
+    );
+  }
 
   return (
     <ManagementScreen
       title="My Profile"
       onBackPress={() => router.push('/(tabs)/profile')}
-      rightSlot={<ManagementBadge label={myProfile.role} tone="green" />}>
+      rightSlot={<ManagementBadge label={user.role} tone="green" />}>
       <ManagementSection title="Overview">
         <ManagementCard>
           <View style={styles.profileTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>NH</Text>
-            </View>
+            <UserAvatar
+              fallback={initials || 'HH'}
+              name={user.fullName}
+              size={58}
+              style={styles.avatar}
+              textSize={18}
+              uri={user.avatarUrl}
+            />
             <View style={styles.profileInfo}>
-              <Text style={styles.name}>{myProfile.fullName}</Text>
-              <Text style={styles.email}>{myProfile.email}</Text>
+              <Text style={styles.name}>{user.fullName}</Text>
+              <Text style={styles.email}>{user.email}</Text>
             </View>
           </View>
         </ManagementCard>
@@ -41,8 +68,12 @@ export default function ProfileDetailScreen() {
         action={<ManagementInlineLink label="Edit" onPress={() => router.push('/profile-edit')} />}>
         <ManagementCard>
           <View style={styles.metaStack}>
-            <ManagementMetaRow icon="phone" label="Phone" value={myProfile.phone} />
-            <ManagementMetaRow icon="image" label="Avatar" value="Profile image linked" />
+            <ManagementMetaRow icon="phone" label="Phone" value={user.phone ?? 'Not provided'} />
+            <ManagementMetaRow
+              icon="image"
+              label="Avatar"
+              value={user.avatarUrl ? 'Cloudinary image linked' : 'Not set'}
+            />
           </View>
         </ManagementCard>
       </ManagementSection>
@@ -50,13 +81,13 @@ export default function ProfileDetailScreen() {
       <ManagementSection title="Account">
         <ManagementCard>
           <View style={styles.metaStack}>
-            <ManagementMetaRow icon="shield" label="Role" value={myProfile.role} />
+            <ManagementMetaRow icon="shield" label="Role" value={user.role} />
             <ManagementMetaRow
               icon="check-circle"
               label="Status"
-              value={myProfile.isActive ? 'Active' : 'Inactive'}
+              value={user.isActive ? 'Active' : 'Inactive'}
             />
-            <ManagementMetaRow icon="clock" label="Last Login" value={myProfile.lastLoginAt} />
+            <ManagementMetaRow icon="clock" label="Last Login" value={user.lastLoginAt ?? 'Not available'} />
           </View>
         </ManagementCard>
       </ManagementSection>
@@ -82,6 +113,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDF5E8',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    height: '100%',
+    width: '100%',
   },
   avatarText: {
     fontSize: 18,
@@ -107,5 +143,11 @@ const styles = StyleSheet.create({
   },
   buttonStack: {
     gap: 12,
+  },
+  emptyText: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    lineHeight: 21,
   },
 });

@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { authPalette } from '@/components/auth/auth-ui';
+import { OpenableImage } from '@/components/media/image-viewer';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 import { reactionEmojis, type PostReactionType } from '@/components/post/post-api';
 
@@ -651,6 +652,7 @@ export function PostReactionBar({
 // ─────────────────────────────────────────────────────────────
 
 export function PostCommentBubble({
+  avatarUrl,
   userName,
   content,
   createdAt,
@@ -660,6 +662,7 @@ export function PostCommentBubble({
   onReply,
   isReply,
 }: {
+  avatarUrl?: string | null;
   userName: string;
   content: string;
   createdAt: string;
@@ -672,11 +675,13 @@ export function PostCommentBubble({
   return (
     <View style={[extraStyles.commentBubble, isReply && extraStyles.commentReply]}>
       <View style={extraStyles.commentHeader}>
-        <View style={extraStyles.commentAvatar}>
-          <Text style={extraStyles.commentAvatarText}>
-            {userName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <UserAvatar
+          name={userName}
+          size={34}
+          style={extraStyles.commentAvatar}
+          textSize={13}
+          uri={avatarUrl}
+        />
         <View style={extraStyles.commentMeta}>
           <Text style={extraStyles.commentUser}>{userName}</Text>
           <Text style={extraStyles.commentTime}>{createdAt}</Text>
@@ -766,15 +771,18 @@ export function PostMediaGallery({
   }
 
   return (
-    <View style={extraStyles.mediaGallery}>
+    <ScrollView
+      horizontal
+      contentContainerStyle={extraStyles.mediaGallery}
+      showsHorizontalScrollIndicator={false}>
       {items.map((item) => (
         <View key={item.mediaId} style={extraStyles.mediaItem}>
           {item.fileType === 'IMAGE' ? (
-            <Image
-              source={{ uri: item.fileUrl }}
-              style={extraStyles.mediaImage}
-              resizeMode="cover"
+            <OpenableImage
               accessibilityLabel={item.altText ?? 'Post image'}
+              altText={item.altText ?? 'Post image'}
+              uri={item.fileUrl}
+              style={extraStyles.mediaImage}
             />
           ) : (
             <View style={extraStyles.mediaPlaceholder}>
@@ -794,7 +802,7 @@ export function PostMediaGallery({
           )}
         </View>
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -1013,22 +1021,22 @@ const extraStyles = StyleSheet.create({
   /* Media Gallery */
   mediaGallery: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
+    paddingHorizontal: 18,
   },
   mediaItem: {
     borderRadius: 14,
     overflow: 'hidden',
   },
   mediaImage: {
-    width: 140,
-    height: 140,
+    width: 260,
+    height: 184,
     borderRadius: 14,
     backgroundColor: '#EEF2EF',
   },
   mediaPlaceholder: {
-    width: 140,
-    height: 100,
+    width: 220,
+    height: 144,
     borderRadius: 14,
     backgroundColor: '#F0F5F1',
     alignItems: 'center',

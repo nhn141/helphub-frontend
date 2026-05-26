@@ -15,6 +15,7 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
+import { UserAvatar } from '@/components/user/user-avatar';
 import {
   formatDateTime,
   getStatusTone,
@@ -149,6 +150,11 @@ export default function RequestsTabScreen() {
               Try again
             </Text>
           </SurfaceCard>
+        ) : isLoading ? (
+          <SurfaceCard>
+            <Text style={styles.emptyTitle}>Loading requests</Text>
+            <Text style={styles.emptyText}>Fetching the latest support requests...</Text>
+          </SurfaceCard>
         ) : requests.length === 0 ? (
           <SurfaceCard>
             <Text style={styles.emptyTitle}>No requests found</Text>
@@ -172,9 +178,20 @@ export default function RequestsTabScreen() {
                     <Text style={styles.cardMeta}>{item.categoryName}</Text>
                   </View>
                   <Text style={styles.cardTitle}>{item.title}</Text>
-                  <View style={styles.cardMetaRow}>
-                    <Feather name="user" size={14} color={authPalette.muted} />
-                    <Text style={styles.cardBody}>Requester: {item.requesterName}</Text>
+                  <View style={styles.requesterInfo}>
+                    <UserAvatar
+                      name={item.requesterName}
+                      size={34}
+                      style={styles.requesterAvatar}
+                      textSize={13}
+                      uri={item.requesterAvatarUrl}
+                    />
+                    <View style={styles.requesterText}>
+                      <Text style={styles.requesterLabel}>Requester</Text>
+                      <Text style={styles.requesterName} numberOfLines={1}>
+                        {item.requesterName}
+                      </Text>
+                    </View>
                   </View>
                   <View style={styles.cardMetaRow}>
                     <Feather name="map-pin" size={14} color={authPalette.muted} />
@@ -247,6 +264,30 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
+  },
+  requesterInfo: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  requesterAvatar: {
+    backgroundColor: '#E6F4EB',
+  },
+  requesterText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  requesterLabel: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
+  },
+  requesterName: {
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    marginTop: 2,
   },
   cardMetaRow: {
     flexDirection: 'row',

@@ -9,12 +9,16 @@ import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { Badge, DashboardScreen } from '@/components/dashboard/tab-ui';
 import { canViewVolunteerPosts, getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
+import { OpenableImage } from '@/components/media/image-viewer';
+import { UserAvatar } from '@/components/user/user-avatar';
 import {
   getAllPosts,
   getMyPosts,
   getCommentsByPost,
+  getMediaByPost,
   getReactionCount,
   formatPostDateTime,
+  type PostMedia,
   type PostSummary,
 } from '@/components/post/post-api';
 import { PostLoading, PostError } from '@/components/post/post-ui';
@@ -25,6 +29,7 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
   const router = useRouter();
   const [reactionCount, setReactionCount] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
+  const [media, setMedia] = useState<PostMedia[]>([]);
 
   useEffect(() => {
     if (!session?.accessToken) return;
@@ -33,10 +38,12 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
     Promise.all([
       getReactionCount(session.accessToken, item.id).catch(() => ({ totalCount: 0 })),
       getCommentsByPost(session.accessToken, item.id).catch(() => []),
-    ]).then(([reactions, comments]) => {
+      getMediaByPost(session.accessToken, item.id).catch(() => []),
+    ]).then(([reactions, comments, postMedia]) => {
       if (isMounted) {
         setReactionCount(reactions.totalCount || 0);
         setCommentCount(comments.length || 0);
+        setMedia(postMedia);
       }
     });
 
@@ -45,6 +52,9 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
     };
   }, [session?.accessToken, item.id]);
 
+  const imageMedia = media.filter((mediaItem) => mediaItem.fileType === 'IMAGE');
+  const firstImage = imageMedia[0] ?? null;
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -52,11 +62,13 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
       style={styles.postCard}>
       
       <View style={styles.postHeader}>
-        <View style={styles.postAvatar}>
-          <Text style={styles.postAvatarText}>
-            {item.authorName.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <UserAvatar
+          name={item.authorName}
+          size={44}
+          style={styles.postAvatar}
+          textSize={18}
+          uri={item.authorAvatarUrl}
+        />
         <View style={styles.postMeta}>
           <Text style={styles.postAuthorName}>{item.authorName}</Text>
           <View style={styles.postTimeRow}>
@@ -75,6 +87,24 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
       <Text style={styles.postContent} numberOfLines={4}>
         {item.content}
       </Text>
+
+      {firstImage ? (
+        <View style={styles.feedMediaWrap}>
+          <OpenableImage
+            accessibilityLabel={firstImage.altText ?? 'Post image'}
+            altText={firstImage.altText ?? 'Post image'}
+            contentFit="cover"
+            style={styles.feedMediaImage}
+            uri={firstImage.fileUrl}
+          />
+          {imageMedia.length > 1 ? (
+            <View style={styles.feedMediaCount}>
+              <Feather name="image" size={12} color="#FFFFFF" />
+              <Text style={styles.feedMediaCountText}>{imageMedia.length}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {item.supportRequestTitle ? (
         <View style={styles.supportTag}>
@@ -198,11 +228,14 @@ export default function PostsTabScreen() {
         accessibilityRole="button"
         onPress={() => router.push('/post-create')}
         style={styles.composerTrigger}>
-        <View style={styles.composerAvatar}>
-          <Text style={styles.composerAvatarText}>
-            {user?.fullName?.charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
+        <UserAvatar
+          fallback="U"
+          name={user?.fullName}
+          size={40}
+          style={styles.composerAvatar}
+          textSize={16}
+          uri={user?.avatarUrl}
+        />
         <View style={styles.composerInput}>
           <Text style={styles.composerInputText}>{"What's on your mind?"}</Text>
         </View>
@@ -379,6 +412,35 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: authPalette.text,
     fontFamily: Fonts.rounded,
+  },
+  feedMediaWrap: {
+    aspectRatio: 4 / 3,
+    backgroundColor: '#EEF2EF',
+    borderRadius: 14,
+    marginTop: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  feedMediaImage: {
+    height: '100%',
+    width: '100%',
+  },
+  feedMediaCount: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.54)',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    position: 'absolute',
+    right: 10,
+    top: 10,
+  },
+  feedMediaCountText: {
+    color: '#FFFFFF',
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
   },
   supportTag: {
     flexDirection: 'row',

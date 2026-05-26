@@ -24,6 +24,7 @@ import {
   getSupportRequests,
   type SupportRequestDetail,
 } from '@/components/support-request/request-api';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -177,9 +178,23 @@ export default function SupportLocationAssignRequestScreen() {
       {selectedRequest ? (
         <ManagementSection title="Request Summary">
           <ManagementCard>
+            <View style={styles.requesterRow}>
+              <UserAvatar
+                name={selectedRequest.requesterName}
+                size={36}
+                style={styles.requesterAvatar}
+                textSize={14}
+                uri={selectedRequest.requesterAvatarUrl}
+              />
+              <View style={styles.requesterText}>
+                <Text style={styles.requesterLabel}>Requester</Text>
+                <Text style={styles.requesterName} numberOfLines={1}>
+                  {selectedRequest.requesterName}
+                </Text>
+              </View>
+            </View>
             <View style={styles.metaStack}>
               <ManagementMetaRow icon="grid" label="Category" value={selectedRequest.categoryName} />
-              <ManagementMetaRow icon="user" label="Requester" value={selectedRequest.requesterName} />
               <ManagementMetaRow
                 icon="map-pin"
                 label="Address"
@@ -217,6 +232,29 @@ const styles = StyleSheet.create({
   metaStack: {
     marginTop: 18,
     gap: 14,
+  },
+  requesterRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  requesterAvatar: {
+    backgroundColor: '#E6F4EB',
+  },
+  requesterText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  requesterLabel: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
+  },
+  requesterName: {
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    marginTop: 2,
   },
   buttonStack: {
     gap: 12,

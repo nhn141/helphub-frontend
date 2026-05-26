@@ -12,6 +12,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 export default function UserDetailScreen() {
@@ -25,9 +26,13 @@ export default function UserDetailScreen() {
       <ManagementSection title="Overview">
         <ManagementCard>
           <View style={styles.profileTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>BL</Text>
-            </View>
+            <UserAvatar
+              name={userDetail.fullName}
+              size={58}
+              style={styles.avatar}
+              textSize={18}
+              uri={userDetail.avatarUrl}
+            />
             <View style={styles.profileInfo}>
               <Text style={styles.name}>{userDetail.fullName}</Text>
               <Text style={styles.email}>{userDetail.email}</Text>

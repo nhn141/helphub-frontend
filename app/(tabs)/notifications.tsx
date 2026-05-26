@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,21 +11,126 @@ import {
   extractConversationId,
   extractSupportRequestId,
   formatChatDateTime,
+  getConversationMessages,
   getMyNotifications,
   getUnreadNotificationCount,
   markAllNotificationsAsRead,
   markNotificationAsRead,
   type NotificationItem,
 } from '@/components/chat/chat-api';
+import {
+  decrementUnreadNotificationCount,
+  setUnreadNotificationCount,
+  useUnreadNotificationCount,
+} from '@/components/notification/notification-state';
 import { Fonts } from '@/constants/theme';
+
+type MessageNotificationMeta = {
+  conversationId: string;
+  senderId: string | null;
+  senderName: string | null;
+};
+
+type DisplayNotification = {
+  id: string;
+  notifications: NotificationItem[];
+  content: string;
+  createdAt: string;
+  isMessage: boolean;
+  isRead: boolean;
+  conversationId: string | null;
+  supportRequestId: string | null;
+};
+
+function getNotificationTime(value: string) {
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const parsed = Date.parse(normalized);
+
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function getLatestNotification(notifications: NotificationItem[]) {
+  return notifications.reduce((latest, notification) =>
+    getNotificationTime(notification.createdAt) > getNotificationTime(latest.createdAt)
+      ? notification
+      : latest
+  );
+}
+
+function buildDisplayNotifications(
+  notifications: NotificationItem[],
+  messageMeta: Record<string, MessageNotificationMeta>
+) {
+  const messageGroups = new Map<string, NotificationItem[]>();
+  const displayNotifications: DisplayNotification[] = [];
+
+  notifications.forEach((notification) => {
+    const conversationId = extractConversationId(notification.actionUrl);
+
+    if (notification.referenceType === 'MESSAGE' && conversationId) {
+      const meta = messageMeta[notification.id];
+      const senderKey = meta?.senderId ?? 'unknown';
+      const groupKey = `message:${conversationId}:${senderKey}`;
+      const group = messageGroups.get(groupKey) ?? [];
+
+      group.push(notification);
+      messageGroups.set(groupKey, group);
+      return;
+    }
+
+    displayNotifications.push({
+      id: notification.id,
+      notifications: [notification],
+      content: notification.content ?? 'New notification',
+      createdAt: notification.createdAt,
+      isMessage: false,
+      isRead: notification.isRead,
+      conversationId: null,
+      supportRequestId: extractSupportRequestId(notification.actionUrl),
+    });
+  });
+
+  messageGroups.forEach((group, groupKey) => {
+    const latestNotification = getLatestNotification(group);
+    const unreadCount = group.filter((notification) => !notification.isRead).length;
+    const messageCount = unreadCount > 0 ? unreadCount : group.length;
+    const senderMeta =
+      messageMeta[latestNotification.id] ??
+      group.map((notification) => messageMeta[notification.id]).find(Boolean);
+    const senderName = senderMeta?.senderName?.trim() || 'Ai đó';
+
+    displayNotifications.push({
+      id: groupKey,
+      notifications: group,
+      content: `${senderName} đã gửi ${messageCount} tin nhắn cho bạn`,
+      createdAt: latestNotification.createdAt,
+      isMessage: true,
+      isRead: unreadCount === 0,
+      conversationId: extractConversationId(latestNotification.actionUrl),
+      supportRequestId: null,
+    });
+  });
+
+  return displayNotifications.sort(
+    (left, right) => getNotificationTime(right.createdAt) - getNotificationTime(left.createdAt)
+  );
+}
 
 export default function NotificationsTabScreen() {
   const router = useRouter();
   const { isAuthenticated, session } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const unreadCount = useUnreadNotificationCount();
+  const [messageNotificationMeta, setMessageNotificationMeta] = useState<
+    Record<string, MessageNotificationMeta>
+  >({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const displayNotifications = useMemo(
+    () => buildDisplayNotifications(notifications, messageNotificationMeta),
+    [messageNotificationMeta, notifications]
+  );
 
   const loadNotifications = useCallback(async () => {
     if (!session?.accessToken) {
@@ -42,7 +147,7 @@ export default function NotificationsTabScreen() {
       ]);
 
       setNotifications(notificationData);
-      setUnreadCount(Number(unreadData.unreadCount ?? 0));
+      setUnreadNotificationCount(Number(unreadData.unreadCount ?? 0));
     } catch (loadError: any) {
       setError(loadError?.message ?? 'Could not load notifications.');
     } finally {
@@ -55,9 +160,101 @@ export default function NotificationsTabScreen() {
       loadNotifications();
     } else {
       setNotifications([]);
-      setUnreadCount(0);
+      setMessageNotificationMeta({});
+      setUnreadNotificationCount(0);
     }
   }, [isAuthenticated, loadNotifications]);
+
+  useEffect(() => {
+    if (!session?.accessToken) {
+      return;
+    }
+
+    const missingNotificationsByConversation = new Map<string, NotificationItem[]>();
+
+    notifications.forEach((notification) => {
+      const conversationId = extractConversationId(notification.actionUrl);
+
+      if (
+        notification.referenceType !== 'MESSAGE' ||
+        !conversationId ||
+        !notification.referenceId ||
+        messageNotificationMeta[notification.id]
+      ) {
+        return;
+      }
+
+      const group = missingNotificationsByConversation.get(conversationId) ?? [];
+      group.push(notification);
+      missingNotificationsByConversation.set(conversationId, group);
+    });
+
+    if (missingNotificationsByConversation.size === 0) {
+      return;
+    }
+
+    let isActive = true;
+    const accessToken = session.accessToken;
+
+    async function loadMessageNotificationMeta() {
+      const metaResults = await Promise.all(
+        Array.from(missingNotificationsByConversation.entries()).map(
+          async ([conversationId, conversationNotifications]) => {
+            try {
+              const messages = await getConversationMessages(accessToken, conversationId);
+              const messageById = new Map(messages.map((message) => [message.id, message]));
+
+              return conversationNotifications.reduce<Record<string, MessageNotificationMeta>>(
+                (result, notification) => {
+                  const message = notification.referenceId
+                    ? messageById.get(notification.referenceId)
+                    : null;
+
+                  if (message) {
+                    result[notification.id] = {
+                      conversationId,
+                      senderId: message.senderId,
+                      senderName: message.senderName,
+                    };
+                  }
+
+                  return result;
+                },
+                {}
+              );
+            } catch {
+              return {};
+            }
+          }
+        )
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      const nextMeta = metaResults.reduce<Record<string, MessageNotificationMeta>>(
+        (result, item) => ({
+          ...result,
+          ...item,
+        }),
+        {}
+      );
+
+      if (Object.keys(nextMeta).length > 0) {
+        setMessageNotificationMeta((current) => ({
+          ...current,
+          ...nextMeta,
+        }));
+      }
+    }
+
+    loadMessageNotificationMeta();
+
+    return () => {
+      isActive = false;
+    };
+  }, [messageNotificationMeta, notifications, session?.accessToken]);
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -72,7 +269,7 @@ export default function NotificationsTabScreen() {
             payload.notification,
             ...current.filter((notification) => notification.id !== payload.notification.id),
           ]);
-          setUnreadCount(Number(payload.unreadCount ?? 0));
+          setUnreadNotificationCount(Number(payload.unreadCount ?? 0));
         },
       },
       {
@@ -86,43 +283,59 @@ export default function NotificationsTabScreen() {
     };
   }, [session?.accessToken]);
 
-  async function handleNotificationPress(notification: NotificationItem) {
+  async function markDisplayNotificationRead(displayNotification: DisplayNotification) {
     if (!session?.accessToken) {
       return;
     }
 
-    if (!notification.isRead) {
-      try {
-        const updatedNotification = await markNotificationAsRead(
-          session.accessToken,
-          notification.id
-        );
+    const unreadNotifications = displayNotification.notifications.filter(
+      (notification) => !notification.isRead
+    );
 
-        setNotifications((current) =>
-          current.map((item) => (item.id === notification.id ? updatedNotification : item))
-        );
-        setUnreadCount((current) => Math.max(0, current - 1));
-      } catch {
-        setUnreadCount((current) => Math.max(0, current - 1));
-      }
+    if (unreadNotifications.length === 0) {
+      return;
     }
 
-    const conversationId = extractConversationId(notification.actionUrl);
+    const results = await Promise.allSettled(
+      unreadNotifications.map((notification) =>
+        markNotificationAsRead(session.accessToken, notification.id)
+      )
+    );
+    const updatedNotifications = new Map<string, NotificationItem>();
 
-    if (conversationId) {
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        updatedNotifications.set(unreadNotifications[index].id, result.value);
+      }
+    });
+
+    if (updatedNotifications.size > 0) {
+      setNotifications((current) =>
+        current.map((notification) => updatedNotifications.get(notification.id) ?? notification)
+      );
+      decrementUnreadNotificationCount(updatedNotifications.size);
+    }
+
+    if (updatedNotifications.size < unreadNotifications.length) {
+      setError('Could not update some notifications.');
+    }
+  }
+
+  async function handleNotificationPress(displayNotification: DisplayNotification) {
+    await markDisplayNotificationRead(displayNotification);
+
+    if (displayNotification.conversationId) {
       router.push({
         pathname: '/(tabs)/chat',
-        params: { conversationId },
+        params: { conversationId: displayNotification.conversationId },
       });
       return;
     }
 
-    const supportRequestId = extractSupportRequestId(notification.actionUrl);
-
-    if (supportRequestId) {
+    if (displayNotification.supportRequestId) {
       router.push({
         pathname: '/support-request-detail',
-        params: { id: supportRequestId },
+        params: { id: displayNotification.supportRequestId },
       });
     }
   }
@@ -140,7 +353,7 @@ export default function NotificationsTabScreen() {
           isRead: true,
         }))
       );
-      setUnreadCount(0);
+      setUnreadNotificationCount(0);
     } catch (readError: any) {
       setError(readError?.message ?? 'Could not update notifications.');
     }
@@ -172,7 +385,9 @@ export default function NotificationsTabScreen() {
         <View style={styles.header}>
           <View style={styles.headerCopy}>
             <Text style={styles.title}>Notifications</Text>
-            <Text style={styles.subtitle}>{unreadCount} unread</Text>
+            <Text style={styles.subtitle}>
+              {unreadCount > 0 ? `${unreadCount} unread` : 'No unread notifications'}
+            </Text>
           </View>
           <View style={styles.headerActions}>
             <Pressable accessibilityRole="button" onPress={loadNotifications} style={styles.iconButton}>
@@ -201,14 +416,14 @@ export default function NotificationsTabScreen() {
         <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
           {isLoading ? <Text style={styles.helperText}>Loading notifications...</Text> : null}
 
-          {!isLoading && notifications.length === 0 ? (
+          {!isLoading && displayNotifications.length === 0 ? (
             <View style={styles.emptyState}>
               <Feather name="bell-off" size={36} color="#AEBAB0" />
               <Text style={styles.emptyTitle}>No notifications</Text>
             </View>
           ) : null}
 
-          {notifications.map((notification) => (
+          {displayNotifications.map((notification) => (
             <Pressable
               accessibilityRole="button"
               key={notification.id}
@@ -219,7 +434,7 @@ export default function NotificationsTabScreen() {
               ]}>
               <View style={styles.notificationIcon}>
                 <Feather
-                  name={notification.referenceType === 'MESSAGE' ? 'message-circle' : 'bell'}
+                  name={notification.isMessage ? 'message-circle' : 'bell'}
                   size={17}
                   color={authPalette.primaryDark}
                 />

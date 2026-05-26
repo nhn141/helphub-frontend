@@ -36,6 +36,12 @@ export type UserProfile = {
   lastLoginAt: string | null;
 };
 
+export type UpdateProfilePayload = {
+  fullName?: string;
+  phone?: string | null;
+  avatarUrl?: string | null;
+};
+
 export type ApiEnvelope<T> = {
   success: boolean;
   message: string;
@@ -140,6 +146,16 @@ export async function getMyProfile(accessToken: string) {
   const response = await apiRequest<ApiEnvelope<UserProfile>>('/users/me', {
     accessToken,
     method: 'GET',
+  });
+
+  return response.data;
+}
+
+export async function updateMyProfile(accessToken: string, payload: UpdateProfilePayload) {
+  const response = await apiRequest<ApiEnvelope<UserProfile>>('/users/me', {
+    accessToken,
+    body: JSON.stringify(payload),
+    method: 'PATCH',
   });
 
   return response.data;

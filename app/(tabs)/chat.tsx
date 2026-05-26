@@ -1,7 +1,9 @@
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,6 +34,13 @@ import {
   type ConversationSummary,
   type RealtimeStatus,
 } from '@/components/chat/chat-api';
+import {
+  pickImageFromLibrary,
+  uploadImageAndCreateMediaRecord,
+  type PickedImage,
+} from '@/components/media/media-api';
+import { OpenableImage } from '@/components/media/image-viewer';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -65,6 +74,51 @@ function moveConversationToTop(
   return [updatedTarget, ...conversations.filter((conversation) => conversation.id !== conversationId)];
 }
 
+function getLatestMessage(messages: ChatMessage[]) {
+  return messages.length > 0 ? messages[messages.length - 1] : null;
+}
+
+function getMessagePreviewText(message: ChatMessage | null, currentUserId?: string | null) {
+  if (!message) {
+    return 'No messages yet';
+  }
+
+  const content = message.content?.trim() || ((message.media?.length ?? 0) > 0 ? 'Image' : 'Message');
+
+  return message.senderId === currentUserId ? `B\u1ea1n: ${content}` : content;
+}
+
+function getConversationPreviewText(
+  conversation: ConversationSummary,
+  messages: ChatMessage[],
+  currentUserId?: string | null
+) {
+  const latestMessage = getLatestMessage(messages);
+
+  if (latestMessage) {
+    return getMessagePreviewText(latestMessage, currentUserId);
+  }
+
+  return conversation.lastMessageId ? 'Loading message...' : 'No messages yet';
+}
+
+function getConversationAvatarMember(
+  conversation: ConversationSummary,
+  currentUserId?: string | null
+) {
+  const otherMembers = conversation.members.filter((member) => member.userId !== currentUserId);
+
+  if (conversation.type === 'PRIVATE') {
+    return otherMembers[0] ?? conversation.members[0] ?? null;
+  }
+
+  return otherMembers[0] ?? conversation.members[0] ?? null;
+}
+
+function formatUnreadCount(count: number) {
+  return count > 99 ? '99+' : String(count);
+}
+
 export default function ChatTabScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -77,10 +131,12 @@ export default function ChatTabScreen() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({});
   const [messageDraft, setMessageDraft] = useState('');
+  const [selectedMessageImage, setSelectedMessageImage] = useState<PickedImage | null>(null);
   const [newChatEmail, setNewChatEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isPickingMessageImage, setIsPickingMessageImage] = useState(false);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
@@ -88,6 +144,8 @@ export default function ChatTabScreen() {
   const selectedConversationIdRef = useRef<string | null>(null);
   const userIdRef = useRef<string | null>(null);
   const conversationsRef = useRef<ConversationSummary[]>([]);
+  const previewHydratedConversationIdsRef = useRef<Set<string>>(new Set());
+  const didRefreshAfterConnectRef = useRef(false);
   const messageScrollRef = useRef<ScrollView>(null);
 
   const selectedConversation = useMemo(
@@ -170,18 +228,68 @@ export default function ChatTabScreen() {
     [session?.accessToken]
   );
 
-  const fetchChatData = useCallback(async () => {
+  const loadConversationPreviews = useCallback(
+    async (conversationData: ConversationSummary[], accessToken: string) => {
+      const conversationsToLoad = conversationData.filter(
+        (conversation) => !previewHydratedConversationIdsRef.current.has(conversation.id)
+      );
+
+      if (conversationsToLoad.length === 0) {
+        return;
+      }
+
+      conversationsToLoad.forEach((conversation) => {
+        previewHydratedConversationIdsRef.current.add(conversation.id);
+      });
+
+      const results = await Promise.allSettled(
+        conversationsToLoad.map(async (conversation) => ({
+          conversationId: conversation.id,
+          messages: await getConversationMessages(accessToken, conversation.id),
+        }))
+      );
+
+      setMessagesByConversation((current) => {
+        let didChange = false;
+        const nextMessagesByConversation = { ...current };
+
+        results.forEach((result, index) => {
+          if (result.status !== 'fulfilled') {
+            previewHydratedConversationIdsRef.current.delete(conversationsToLoad[index].id);
+            return;
+          }
+
+          const currentMessages = nextMessagesByConversation[result.value.conversationId] ?? [];
+          nextMessagesByConversation[result.value.conversationId] = result.value.messages.reduce(
+            (messages, message) => upsertMessage(messages, message),
+            currentMessages
+          );
+          didChange = true;
+        });
+
+        return didChange ? nextMessagesByConversation : current;
+      });
+    },
+    []
+  );
+
+  const fetchChatData = useCallback(async (options: { silent?: boolean } = {}) => {
     if (!session?.accessToken) {
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
+    const isSilent = options.silent === true;
+
+    if (!isSilent) {
+      setIsLoading(true);
+      setError(null);
+    }
 
     try {
       const conversationData = await getMyConversations(session.accessToken);
 
       setConversations(conversationData);
+      void loadConversationPreviews(conversationData, session.accessToken);
       setSelectedConversationId((currentId) => {
         if (currentId && conversationData.some((conversation) => conversation.id === currentId)) {
           return currentId;
@@ -190,11 +298,65 @@ export default function ChatTabScreen() {
         return null;
       });
     } catch (loadError: any) {
-      setError(loadError?.message ?? 'Could not load chat.');
+      if (!isSilent) {
+        setError(loadError?.message ?? 'Could not load chat.');
+      }
     } finally {
-      setIsLoading(false);
+      if (!isSilent) {
+        setIsLoading(false);
+      }
     }
-  }, [session?.accessToken]);
+  }, [loadConversationPreviews, session?.accessToken]);
+
+  const refreshConversationMessages = useCallback(
+    async (conversationId: string, options: { silent?: boolean } = {}) => {
+      if (!session?.accessToken) {
+        return;
+      }
+
+      const isSilent = options.silent === true;
+
+      if (!isSilent) {
+        setIsMessagesLoading(true);
+        setError(null);
+      }
+
+      try {
+        const messages = await getConversationMessages(session.accessToken, conversationId);
+
+        setMessagesByConversation((current) => ({
+          ...current,
+          [conversationId]: messages,
+        }));
+
+        const lastMessage = getLatestMessage(messages);
+
+        if (lastMessage) {
+          setConversations((current) =>
+            current.map((conversation) =>
+              conversation.id === conversationId
+                ? {
+                    ...conversation,
+                    lastMessageId: lastMessage.id,
+                    unreadCount: 0,
+                  }
+                : conversation
+            )
+          );
+          markConversationRead(conversationId, lastMessage);
+        }
+      } catch (loadError: any) {
+        if (!isSilent) {
+          setError(loadError?.message ?? 'Could not load messages.');
+        }
+      } finally {
+        if (!isSilent) {
+          setIsMessagesLoading(false);
+        }
+      }
+    },
+    [markConversationRead, session?.accessToken]
+  );
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -207,59 +369,10 @@ export default function ChatTabScreen() {
       return;
     }
 
-    let isActive = true;
-    const accessToken = session.accessToken;
     const conversationId = selectedConversationId;
 
-    async function loadMessages() {
-      setIsMessagesLoading(true);
-      setError(null);
-
-      try {
-        const messages = await getConversationMessages(accessToken, conversationId);
-
-        if (!isActive) {
-          return;
-        }
-
-        setMessagesByConversation((current) => ({
-          ...current,
-          [conversationId]: messages,
-        }));
-
-        const lastMessage = messages[messages.length - 1];
-
-        if (lastMessage) {
-          setConversations((current) =>
-            current.map((conversation) =>
-              conversation.id === conversationId
-                ? {
-                    ...conversation,
-                    lastMessageId: lastMessage.id,
-                    unreadCount: 0,
-                  }
-                : conversation
-              )
-          );
-          markConversationRead(conversationId, lastMessage);
-        }
-      } catch (loadError: any) {
-        if (isActive) {
-          setError(loadError?.message ?? 'Could not load messages.');
-        }
-      } finally {
-        if (isActive) {
-          setIsMessagesLoading(false);
-        }
-      }
-    }
-
-    loadMessages();
-
-    return () => {
-      isActive = false;
-    };
-  }, [markConversationRead, selectedConversationId, session?.accessToken]);
+    refreshConversationMessages(conversationId);
+  }, [refreshConversationMessages, selectedConversationId, session?.accessToken]);
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -324,6 +437,10 @@ export default function ChatTabScreen() {
       },
       onStatusChange(status) {
         setRealtimeStatus(status);
+
+        if (status === 'connected') {
+          setError((current) => (current === 'Realtime connection error.' ? null : current));
+        }
       },
     }, {
       messages: true,
@@ -334,6 +451,60 @@ export default function ChatTabScreen() {
       connection.disconnect();
     };
   }, [markConversationRead, session?.accessToken]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !session?.accessToken) {
+      return;
+    }
+
+    if (realtimeStatus !== 'connected') {
+      didRefreshAfterConnectRef.current = false;
+      return;
+    }
+
+    if (didRefreshAfterConnectRef.current) {
+      return;
+    }
+
+    didRefreshAfterConnectRef.current = true;
+    void fetchChatData({ silent: true });
+
+    const conversationId = selectedConversationIdRef.current;
+
+    if (conversationId) {
+      void refreshConversationMessages(conversationId, { silent: true });
+    }
+  }, [
+    fetchChatData,
+    isAuthenticated,
+    refreshConversationMessages,
+    realtimeStatus,
+    session?.accessToken,
+  ]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !session?.accessToken || realtimeStatus === 'connected') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void fetchChatData({ silent: true });
+
+      const conversationId = selectedConversationIdRef.current;
+
+      if (conversationId) {
+        void refreshConversationMessages(conversationId, { silent: true });
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [
+    fetchChatData,
+    isAuthenticated,
+    refreshConversationMessages,
+    realtimeStatus,
+    session?.accessToken,
+  ]);
 
   useEffect(() => {
     if (!selectedConversationId) {
@@ -347,10 +518,42 @@ export default function ChatTabScreen() {
     return () => clearTimeout(timeout);
   }, [selectedConversationId, selectedMessages.length]);
 
+  async function handlePickMessageImage() {
+    if (isPickingMessageImage || isSending) {
+      return;
+    }
+
+    setIsPickingMessageImage(true);
+    setError(null);
+
+    try {
+      const image = await pickImageFromLibrary({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.85,
+      });
+
+      if (image) {
+        setSelectedMessageImage(image);
+      }
+    } catch (pickError: any) {
+      const message = pickError?.message ?? 'Could not choose an image.';
+      setError(message);
+      Alert.alert('Image picker', message);
+    } finally {
+      setIsPickingMessageImage(false);
+    }
+  }
+
   async function handleSendMessage() {
     const content = messageDraft.trim();
 
-    if (!session?.accessToken || !selectedConversationId || !content || isSending) {
+    if (
+      !session?.accessToken ||
+      !selectedConversationId ||
+      (!content && !selectedMessageImage) ||
+      isSending
+    ) {
       return;
     }
 
@@ -358,13 +561,30 @@ export default function ChatTabScreen() {
     setError(null);
 
     try {
+      const mediaIds: string[] = [];
+
+      if (selectedMessageImage) {
+        const mediaRecord = await uploadImageAndCreateMediaRecord(
+          session.accessToken,
+          selectedMessageImage,
+          {
+            altText: 'Chat image',
+            folder: 'helphub/messages',
+            isPublic: false,
+          }
+        );
+        mediaIds.push(mediaRecord.id);
+      }
+
       const sentMessage = await sendConversationMessage(
         session.accessToken,
         selectedConversationId,
-        content
+        content,
+        mediaIds
       );
 
       setMessageDraft('');
+      setSelectedMessageImage(null);
       setMessagesByConversation((current) => ({
         ...current,
         [selectedConversationId]: upsertMessage(
@@ -381,6 +601,7 @@ export default function ChatTabScreen() {
       );
     } catch (sendError: any) {
       setError(sendError?.message ?? 'Could not send message.');
+      Alert.alert('Message', sendError?.message ?? 'Could not send message.');
     } finally {
       setIsSending(false);
     }
@@ -422,6 +643,9 @@ export default function ChatTabScreen() {
   const selectedTitle = selectedConversation
     ? getConversationTitle(selectedConversation, user?.id)
     : 'Conversation';
+  const selectedAvatarMember = selectedConversation
+    ? getConversationAvatarMember(selectedConversation, user?.id)
+    : null;
 
   if (!isAuthenticated) {
     return (
@@ -468,7 +692,7 @@ export default function ChatTabScreen() {
               </Text>
             </View>
           </View>
-          <Pressable accessibilityRole="button" onPress={fetchChatData} style={styles.iconButton}>
+          <Pressable accessibilityRole="button" onPress={() => fetchChatData()} style={styles.iconButton}>
             <Feather name="refresh-cw" size={19} color={authPalette.primaryDark} />
           </Pressable>
         </View>
@@ -490,6 +714,7 @@ export default function ChatTabScreen() {
               currentUserId={user?.id}
               isCreatingChat={isCreatingChat}
               isLoading={isLoading}
+              messagesByConversation={messagesByConversation}
               newChatEmail={newChatEmail}
               onCreateChat={handleCreatePrivateConversation}
               onConversationPress={handleConversationPress}
@@ -511,9 +736,14 @@ export default function ChatTabScreen() {
                           <Feather name="arrow-left" size={20} color={authPalette.primaryDark} />
                         </Pressable>
                       ) : null}
-                      <View style={styles.threadAvatar}>
-                        <Text style={styles.threadAvatarText}>{getInitials(selectedTitle)}</Text>
-                      </View>
+                      <UserAvatar
+                        fallback={getInitials(selectedTitle)}
+                        name={selectedAvatarMember?.fullName ?? selectedTitle}
+                        size={40}
+                        style={styles.threadAvatar}
+                        textSize={13}
+                        uri={selectedAvatarMember?.avatarUrl}
+                      />
                       <View style={styles.threadTitleWrap}>
                         <Text style={styles.threadTitle} numberOfLines={1}>
                           {selectedTitle}
@@ -542,6 +772,7 @@ export default function ChatTabScreen() {
 
                       {selectedMessages.map((message) => {
                         const isMine = message.senderId === user?.id;
+                        const messageMedia = message.media ?? [];
 
                         return (
                           <View
@@ -550,6 +781,15 @@ export default function ChatTabScreen() {
                               styles.messageRow,
                               isMine ? styles.messageRowMine : styles.messageRowOther,
                             ]}>
+                            {!isMine ? (
+                              <UserAvatar
+                                name={message.senderName}
+                                size={30}
+                                style={styles.messageAvatar}
+                                textSize={11}
+                                uri={message.senderAvatarUrl}
+                              />
+                            ) : null}
                             <View
                               style={[
                                 styles.messageBubble,
@@ -558,13 +798,56 @@ export default function ChatTabScreen() {
                               {!isMine ? (
                                 <Text style={styles.messageSender}>{message.senderName}</Text>
                               ) : null}
-                              <Text
-                                style={[
-                                  styles.messageText,
-                                  isMine && styles.messageTextMine,
-                                ]}>
-                                {message.content ?? 'Attachment'}
-                              </Text>
+                              {messageMedia.length > 0 ? (
+                                <View style={styles.messageMediaStack}>
+                                  {messageMedia.map((media) => {
+                                    const isImage =
+                                      media.fileType === 'IMAGE' ||
+                                      media.mimeType?.startsWith('image/');
+
+                                    if (isImage) {
+                                      return (
+                                        <OpenableImage
+                                          accessibilityLabel={media.altText ?? media.fileName}
+                                          altText={media.altText ?? media.fileName}
+                                          contentFit="cover"
+                                          key={media.id}
+                                          style={styles.messageImage}
+                                          uri={media.fileUrl}
+                                        />
+                                      );
+                                    }
+
+                                    return (
+                                      <View key={media.id} style={styles.messageAttachment}>
+                                        <Feather
+                                          name="paperclip"
+                                          size={14}
+                                          color={isMine ? '#D8F8E7' : authPalette.primaryDark}
+                                        />
+                                        <Text
+                                          numberOfLines={1}
+                                          style={[
+                                            styles.messageAttachmentText,
+                                            isMine && styles.messageTextMine,
+                                          ]}>
+                                          {media.fileName}
+                                        </Text>
+                                      </View>
+                                    );
+                                  })}
+                                </View>
+                              ) : null}
+                              {message.content ? (
+                                <Text
+                                  style={[
+                                    styles.messageText,
+                                    isMine && styles.messageTextMine,
+                                    messageMedia.length > 0 && styles.messageTextWithMedia,
+                                  ]}>
+                                  {message.content}
+                                </Text>
+                              ) : null}
                               <Text
                                 style={[
                                   styles.messageTime,
@@ -579,25 +862,57 @@ export default function ChatTabScreen() {
                       })}
                     </ScrollView>
 
-                    <View style={styles.composer}>
-                      <TextInput
-                        multiline
-                        onChangeText={setMessageDraft}
-                        placeholder="Message"
-                        placeholderTextColor="#91A094"
-                        style={styles.composerInput}
-                        value={messageDraft}
-                      />
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={!messageDraft.trim() || isSending}
-                        onPress={handleSendMessage}
-                        style={[
-                          styles.sendButton,
-                          (!messageDraft.trim() || isSending) && styles.sendButtonDisabled,
-                        ]}>
-                        <Feather name="send" size={18} color="#FFFFFF" />
-                      </Pressable>
+                    <View style={styles.composerWrap}>
+                      {selectedMessageImage ? (
+                        <View style={styles.selectedImagePreview}>
+                          <Image
+                            contentFit="cover"
+                            source={{ uri: selectedMessageImage.uri }}
+                            style={styles.selectedImage}
+                          />
+                          <Text style={styles.selectedImageText} numberOfLines={1}>
+                            Image ready to send
+                          </Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={isSending}
+                            onPress={() => setSelectedMessageImage(null)}
+                            style={styles.selectedImageRemove}>
+                            <Feather name="x" size={16} color="#FFFFFF" />
+                          </Pressable>
+                        </View>
+                      ) : null}
+                      <View style={styles.composer}>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={isPickingMessageImage || isSending}
+                          onPress={handlePickMessageImage}
+                          style={[
+                            styles.attachButton,
+                            (isPickingMessageImage || isSending) && styles.attachButtonDisabled,
+                          ]}>
+                          <Feather name="image" size={18} color={authPalette.primaryDark} />
+                        </Pressable>
+                        <TextInput
+                          multiline
+                          onChangeText={setMessageDraft}
+                          placeholder="Message"
+                          placeholderTextColor="#91A094"
+                          style={styles.composerInput}
+                          value={messageDraft}
+                        />
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={(!messageDraft.trim() && !selectedMessageImage) || isSending}
+                          onPress={handleSendMessage}
+                          style={[
+                            styles.sendButton,
+                            ((!messageDraft.trim() && !selectedMessageImage) || isSending) &&
+                              styles.sendButtonDisabled,
+                          ]}>
+                          <Feather name="send" size={18} color="#FFFFFF" />
+                        </Pressable>
+                      </View>
                     </View>
                   </>
                 ) : (
@@ -619,6 +934,7 @@ function ConversationList({
   currentUserId,
   isCreatingChat,
   isLoading,
+  messagesByConversation,
   newChatEmail,
   onCreateChat,
   onConversationPress,
@@ -629,6 +945,7 @@ function ConversationList({
   currentUserId?: string | null;
   isCreatingChat: boolean;
   isLoading: boolean;
+  messagesByConversation: Record<string, ChatMessage[]>;
   newChatEmail: string;
   onCreateChat: () => void;
   onConversationPress: (conversationId: string) => void;
@@ -681,7 +998,13 @@ function ConversationList({
 
         {conversations.map((conversation) => {
           const title = getConversationTitle(conversation, currentUserId);
+          const avatarMember = getConversationAvatarMember(conversation, currentUserId);
           const isSelected = conversation.id === selectedConversationId;
+          const conversationMessages = messagesByConversation[conversation.id] ?? [];
+          const latestMessage = getLatestMessage(conversationMessages);
+          const hasUnreadMessages = (conversation.unreadCount ?? 0) > 0;
+          const shouldEmphasizePreview =
+            hasUnreadMessages && latestMessage?.senderId !== currentUserId;
 
           return (
             <Pressable
@@ -689,25 +1012,37 @@ function ConversationList({
               key={conversation.id}
               onPress={() => onConversationPress(conversation.id)}
               style={[styles.conversationCard, isSelected && styles.conversationCardActive]}>
-              <View style={styles.conversationAvatar}>
-                <Text style={styles.conversationAvatarText}>{getInitials(title)}</Text>
-              </View>
+              <UserAvatar
+                fallback={getInitials(title)}
+                name={avatarMember?.fullName ?? title}
+                size={44}
+                style={styles.conversationAvatar}
+                textSize={14}
+                uri={avatarMember?.avatarUrl}
+              />
               <View style={styles.conversationText}>
                 <View style={styles.conversationTopLine}>
                   <Text style={styles.conversationTitle} numberOfLines={1}>
                     {title}
                   </Text>
                   <Text style={styles.conversationTime}>
-                    {formatChatDateTime(conversation.createdAt)}
+                    {formatChatDateTime(latestMessage?.createdAt ?? conversation.createdAt)}
                   </Text>
                 </View>
-                <Text style={styles.conversationSubtitle} numberOfLines={1}>
-                  {getConversationSubtitle(conversation, currentUserId)}
+                <Text
+                  style={[
+                    styles.conversationPreview,
+                    shouldEmphasizePreview && styles.conversationPreviewUnread,
+                  ]}
+                  numberOfLines={1}>
+                  {getConversationPreviewText(conversation, conversationMessages, currentUserId)}
                 </Text>
               </View>
-              {conversation.unreadCount > 0 ? (
+              {hasUnreadMessages ? (
                 <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>{conversation.unreadCount}</Text>
+                  <Text style={styles.unreadBadgeText}>
+                    {formatUnreadCount(conversation.unreadCount)}
+                  </Text>
                 </View>
               ) : null}
             </Pressable>
@@ -969,23 +1304,29 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 11,
   },
-  conversationSubtitle: {
+  conversationPreview: {
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
     fontSize: 12,
   },
+  conversationPreviewUnread: {
+    color: authPalette.text,
+    fontWeight: '700',
+  },
   unreadBadge: {
     alignItems: 'center',
     backgroundColor: authPalette.coral,
-    borderRadius: 9,
-    minWidth: 20,
+    borderRadius: 11,
+    height: 22,
     paddingHorizontal: 6,
-    paddingVertical: 3,
+    justifyContent: 'center',
+    minWidth: 22,
   },
   unreadBadgeText: {
     color: '#FFFFFF',
     fontFamily: Fonts.rounded,
     fontSize: 11,
+    lineHeight: 14,
   },
   threadPanel: {
     backgroundColor: '#FFFFFF',
@@ -1052,7 +1393,9 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   messageRow: {
+    alignItems: 'flex-end',
     flexDirection: 'row',
+    gap: 8,
   },
   messageRowMine: {
     justifyContent: 'flex-end',
@@ -1062,9 +1405,12 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     borderRadius: 8,
-    maxWidth: '82%',
+    maxWidth: '78%',
     paddingHorizontal: 12,
     paddingVertical: 9,
+  },
+  messageAvatar: {
+    backgroundColor: '#E4F7EB',
   },
   messageBubbleMine: {
     backgroundColor: authPalette.primaryDark,
@@ -1084,8 +1430,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  messageTextWithMedia: {
+    marginTop: 7,
+  },
   messageTextMine: {
     color: '#FFFFFF',
+  },
+  messageMediaStack: {
+    gap: 7,
+  },
+  messageImage: {
+    aspectRatio: 4 / 3,
+    backgroundColor: '#DDE7DF',
+    borderRadius: 8,
+    width: 220,
+  },
+  messageAttachment: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    maxWidth: 220,
+  },
+  messageAttachmentText: {
+    color: authPalette.text,
+    flex: 1,
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
   },
   messageTime: {
     color: '#7D8980',
@@ -1096,13 +1466,59 @@ const styles = StyleSheet.create({
   messageTimeMine: {
     color: '#D8F8E7',
   },
-  composer: {
-    alignItems: 'flex-end',
+  composerWrap: {
     borderTopColor: '#EDF2EE',
     borderTopWidth: 1,
+  },
+  selectedImagePreview: {
+    alignItems: 'center',
+    backgroundColor: '#F2F7F3',
+    borderColor: '#DCE6DF',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginHorizontal: 10,
+    marginTop: 10,
+    minHeight: 54,
+    padding: 7,
+  },
+  selectedImage: {
+    backgroundColor: '#DDE7DF',
+    borderRadius: 6,
+    height: 40,
+    width: 54,
+  },
+  selectedImageText: {
+    color: authPalette.text,
+    flex: 1,
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
+  },
+  selectedImageRemove: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.46)',
+    borderRadius: 8,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  composer: {
+    alignItems: 'flex-end',
     flexDirection: 'row',
     gap: 10,
     padding: 10,
+  },
+  attachButton: {
+    alignItems: 'center',
+    backgroundColor: '#ECF5EF',
+    borderRadius: 8,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  attachButtonDisabled: {
+    opacity: 0.45,
   },
   composerInput: {
     backgroundColor: '#F2F7F3',

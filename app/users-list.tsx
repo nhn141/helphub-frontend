@@ -10,6 +10,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 const filters = ['All Users', 'Requester', 'Volunteer', 'Collaborator'];
@@ -38,6 +39,13 @@ export default function UsersListScreen() {
               onPress={() => router.push('/user-detail')}>
               <ManagementCard>
                 <View style={styles.cardTop}>
+                  <UserAvatar
+                    name={item.fullName}
+                    size={42}
+                    style={styles.avatar}
+                    textSize={15}
+                    uri={item.avatarUrl}
+                  />
                   <Text style={styles.name}>{item.fullName}</Text>
                   <ManagementBadge label={item.role} tone={item.role === 'COLLABORATOR' ? 'amber' : 'green'} />
                 </View>
@@ -95,6 +103,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: authPalette.text,
     fontFamily: Fonts.rounded,
+  },
+  avatar: {
+    backgroundColor: '#DDF5E8',
   },
   email: {
     marginTop: 10,

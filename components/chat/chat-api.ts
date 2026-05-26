@@ -1,3 +1,5 @@
+import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
+
 import { API_BASE_URL, apiRequest, type ApiEnvelope } from '@/components/auth/auth-api';
 
 export type ConversationType = 'PRIVATE' | 'GROUP';
@@ -88,12 +90,6 @@ type RealtimeSubscriptionOptions = {
   notifications?: boolean;
 };
 
-type StompFrame = {
-  command: string;
-  headers: Record<string, string>;
-  body: string;
-};
-
 export async function getMyConversations(accessToken: string) {
   const response = await apiRequest<ApiEnvelope<ConversationSummary[]>>('/conversations/me', {
     accessToken,
@@ -143,15 +139,17 @@ export async function getConversationMessages(accessToken: string, conversationI
 export async function sendConversationMessage(
   accessToken: string,
   conversationId: string,
-  content: string
+  content: string | null,
+  mediaIds: string[] = []
 ) {
+  const normalizedContent = content?.trim() ?? '';
   const response = await apiRequest<ApiEnvelope<ChatMessage>>(
     `/conversations/${conversationId}/messages`,
     {
       accessToken,
       body: JSON.stringify({
-        content,
-        mediaIds: [],
+        content: normalizedContent.length > 0 ? normalizedContent : null,
+        mediaIds,
       }),
       method: 'POST',
     }
@@ -289,134 +287,86 @@ export function connectChatRealtime(
   handlers: RealtimeHandlers,
   subscriptions: RealtimeSubscriptionOptions = {}
 ) {
-  let socket: WebSocket | null = null;
-  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   let disposed = false;
-  let connected = false;
+  let activeSubscriptions: StompSubscription[] = [];
   const shouldSubscribeMessages = subscriptions.messages ?? true;
   const shouldSubscribeNotifications = subscriptions.notifications ?? true;
+
+  const client = new Client({
+    connectHeaders: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
+    connectionTimeout: 8000,
+    reconnectDelay: 3000,
+    webSocketFactory: () => new WebSocket(getWebSocketUrl()),
+    beforeConnect: () => {
+      if (!disposed) {
+        handlers.onStatusChange?.('connecting');
+      }
+    },
+    onConnect: () => {
+      if (disposed) {
+        return;
+      }
+
+      activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
+      activeSubscriptions = [];
+
+      if (shouldSubscribeMessages) {
+        activeSubscriptions.push(
+          client.subscribe('/user/queue/messages', (message) => {
+            handleRealtimeMessage(message, handlers, 'messages');
+          })
+        );
+      }
+
+      if (shouldSubscribeNotifications) {
+        activeSubscriptions.push(
+          client.subscribe('/user/queue/notifications', (message) => {
+            handleRealtimeMessage(message, handlers, 'notifications');
+          })
+        );
+      }
+
+      handlers.onStatusChange?.('connected');
+    },
+    onStompError: (frame) => {
+      handlers.onError?.(
+        frame.body || frame.headers.message || 'Realtime connection error.'
+      );
+    },
+    onWebSocketError: () => {
+      if (!disposed) {
+        handlers.onError?.('Realtime connection error.');
+      }
+    },
+    onWebSocketClose: () => {
+      activeSubscriptions = [];
+      if (!disposed) {
+        handlers.onStatusChange?.('disconnected');
+      }
+    },
+  });
 
   handlers.onStatusChange?.('connecting');
 
   try {
-    socket = new WebSocket(getWebSocketUrl());
+    client.activate();
   } catch (error) {
     handlers.onStatusChange?.('disconnected');
-    handlers.onError?.(error instanceof Error ? error.message : 'Could not open realtime connection.');
-
-    return {
-      disconnect() {},
-    };
-  }
-
-  function sendFrame(command: string, headers: Record<string, string>, body = '') {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    socket.send(buildStompFrame(command, headers, body));
-  }
-
-  function subscribeToQueues() {
-    if (shouldSubscribeMessages) {
-      sendFrame('SUBSCRIBE', {
-        ack: 'auto',
-        destination: '/user/queue/messages',
-        id: 'helphub-messages',
-      });
-    }
-
-    if (shouldSubscribeNotifications) {
-      sendFrame('SUBSCRIBE', {
-        ack: 'auto',
-        destination: '/user/queue/notifications',
-        id: 'helphub-notifications',
-      });
-    }
-  }
-
-  socket.onopen = () => {
-    sendFrame('CONNECT', {
-      Authorization: `Bearer ${accessToken}`,
-      'accept-version': '1.2',
-      'heart-beat': '10000,10000',
-    });
-  };
-
-  socket.onmessage = (event) => {
-    const data = typeof event.data === 'string' ? event.data : String(event.data ?? '');
-    const rawFrames = data.split('\0');
-
-    rawFrames.forEach((rawFrame) => {
-      if (!rawFrame || rawFrame.trim().length === 0) {
-        return;
-      }
-
-      const frame = parseStompFrame(rawFrame);
-
-      if (frame.command === 'CONNECTED') {
-        connected = true;
-        handlers.onStatusChange?.('connected');
-        subscribeToQueues();
-
-        heartbeatTimer = setInterval(() => {
-          if (socket?.readyState === WebSocket.OPEN) {
-            socket.send('\n');
-          }
-        }, 25000);
-
-        return;
-      }
-
-      if (frame.command === 'MESSAGE') {
-        handleMessageFrame(frame, handlers);
-        return;
-      }
-
-      if (frame.command === 'ERROR') {
-        handlers.onError?.(frame.body || 'Realtime connection error.');
-      }
-    });
-  };
-
-  socket.onerror = () => {
-    if (!disposed) {
-      handlers.onError?.('Realtime connection error.');
-    }
-  };
-
-  socket.onclose = () => {
-    connected = false;
-    clearHeartbeat();
-
-    if (!disposed) {
-      handlers.onStatusChange?.('disconnected');
-    }
-  };
-
-  function clearHeartbeat() {
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
+    handlers.onError?.(
+      error instanceof Error ? error.message : 'Could not open realtime connection.'
+    );
   }
 
   return {
     disconnect() {
       disposed = true;
-      clearHeartbeat();
-
-      if (socket?.readyState === WebSocket.OPEN) {
-        if (connected) {
-          sendFrame('DISCONNECT', {
-            receipt: 'helphub-disconnect',
-          });
-        }
-
-        socket.close();
-      }
-
-      socket = null;
+      activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
+      activeSubscriptions = [];
+      void client.deactivate();
       handlers.onStatusChange?.('disconnected');
     },
   };
@@ -427,65 +377,24 @@ function getWebSocketUrl() {
   return `${apiRoot.replace(/^http/i, 'ws')}/ws`;
 }
 
-function buildStompFrame(command: string, headers: Record<string, string>, body: string) {
-  const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${value}`);
-  return [command, ...headerLines, '', body].join('\n') + '\0';
-}
-
-function parseStompFrame(rawFrame: string): StompFrame {
-  const normalizedFrame = rawFrame.replace(/\r\n/g, '\n');
-  const headerEndIndex = normalizedFrame.indexOf('\n\n');
-
-  if (headerEndIndex < 0) {
-    return {
-      body: '',
-      command: normalizedFrame.trim(),
-      headers: {},
-    };
-  }
-
-  const headerLines = normalizedFrame.slice(0, headerEndIndex).split('\n');
-  const command = headerLines.shift()?.trim() ?? '';
-  const headers = headerLines.reduce<Record<string, string>>((result, line) => {
-    const separatorIndex = line.indexOf(':');
-
-    if (separatorIndex > 0) {
-      result[line.slice(0, separatorIndex)] = line.slice(separatorIndex + 1);
-    }
-
-    return result;
-  }, {});
-  let body = normalizedFrame.slice(headerEndIndex + 2);
-  const contentLength = Number(headers['content-length']);
-
-  if (Number.isFinite(contentLength) && contentLength >= 0) {
-    body = body.slice(0, contentLength);
-  }
-
-  return {
-    body,
-    command,
-    headers,
-  };
-}
-
-function handleMessageFrame(frame: StompFrame, handlers: RealtimeHandlers) {
-  if (!frame.body) {
+function handleRealtimeMessage(
+  message: IMessage,
+  handlers: RealtimeHandlers,
+  destination: 'messages' | 'notifications'
+) {
+  if (!message.body) {
     return;
   }
 
   try {
-    const payload = JSON.parse(frame.body);
-    const destination = frame.headers.destination ?? '';
+    const payload = JSON.parse(message.body);
 
-    if (destination.includes('/queue/messages')) {
+    if (destination === 'messages') {
       handlers.onMessage?.(payload as RealtimeMessagePayload);
       return;
     }
 
-    if (destination.includes('/queue/notifications')) {
-      handlers.onNotification?.(payload as RealtimeNotificationPayload);
-    }
+    handlers.onNotification?.(payload as RealtimeNotificationPayload);
   } catch {
     handlers.onError?.('Could not read realtime payload.');
   }

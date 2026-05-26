@@ -5,6 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
+import { UserAvatar } from '@/components/user/user-avatar';
 import {
   getSupportLocations,
   type SupportLocationSummary,
@@ -132,9 +133,23 @@ export default function SupportRequestAssignLocationScreen() {
         <RequestSection title="Request Summary">
           <RequestCard>
             <Text style={styles.title}>{requestDetail.title}</Text>
+            <View style={styles.requesterRow}>
+              <UserAvatar
+                name={requestDetail.requesterName}
+                size={36}
+                style={styles.requesterAvatar}
+                textSize={14}
+                uri={requestDetail.requesterAvatarUrl}
+              />
+              <View style={styles.requesterText}>
+                <Text style={styles.requesterLabel}>Requester</Text>
+                <Text style={styles.requesterName} numberOfLines={1}>
+                  {requestDetail.requesterName}
+                </Text>
+              </View>
+            </View>
             <View style={styles.metaStack}>
               <RequestMetaRow icon="grid" label="Category" value={requestDetail.categoryName} />
-              <RequestMetaRow icon="user" label="Requester" value={requestDetail.requesterName} />
               <RequestMetaRow
                 icon="map-pin"
                 label="Address"
@@ -192,6 +207,30 @@ const styles = StyleSheet.create({
   metaStack: {
     marginTop: 18,
     gap: 14,
+  },
+  requesterRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  requesterAvatar: {
+    backgroundColor: '#E6F4EB',
+  },
+  requesterText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  requesterLabel: {
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
+  },
+  requesterName: {
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    marginTop: 2,
   },
   buttonStack: {
     gap: 12,

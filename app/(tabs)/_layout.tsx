@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Feather } from '@expo/vector-icons';
 
 import { authPalette } from '@/components/auth/auth-ui';
@@ -7,17 +7,21 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { connectChatRealtime, getUnreadNotificationCount } from '@/components/chat/chat-api';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { HapticTab } from '@/components/haptic-tab';
+import {
+  setUnreadNotificationCount,
+  useUnreadNotificationCount,
+} from '@/components/notification/notification-state';
 import { canManageCategories, canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function TabLayout() {
   const { role } = useDemoRole();
   const { session } = useAuth();
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const unreadNotifications = useUnreadNotificationCount();
 
   useEffect(() => {
     if (!session?.accessToken) {
-      setUnreadNotifications(0);
+      setUnreadNotificationCount(0);
       return;
     }
 
@@ -26,12 +30,12 @@ export default function TabLayout() {
     getUnreadNotificationCount(session.accessToken)
       .then((response) => {
         if (isActive) {
-          setUnreadNotifications(Number(response.unreadCount ?? 0));
+          setUnreadNotificationCount(Number(response.unreadCount ?? 0));
         }
       })
       .catch(() => {
         if (isActive) {
-          setUnreadNotifications(0);
+          setUnreadNotificationCount(0);
         }
       });
 
@@ -39,7 +43,7 @@ export default function TabLayout() {
       session.accessToken,
       {
         onNotification(payload) {
-          setUnreadNotifications(Number(payload.unreadCount ?? 0));
+          setUnreadNotificationCount(Number(payload.unreadCount ?? 0));
         },
       },
       {
