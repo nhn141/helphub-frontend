@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { authPalette } from '@/components/auth/auth-ui';
 import { categoryDetail } from '@/components/management/category-mocks';
@@ -7,7 +7,6 @@ import {
   ManagementBadge,
   ManagementCard,
   ManagementInlineLink,
-  ManagementMetaRow,
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
@@ -23,24 +22,13 @@ export default function CategoryDetailScreen() {
       rightSlot={
         <ManagementBadge label={categoryDetail.isActive ? 'ACTIVE' : 'INACTIVE'} tone={categoryDetail.isActive ? 'green' : 'slate'} />
       }>
-      <ManagementSection title="Overview">
+      <ManagementSection
+        title="Overview"
+        action={<ManagementInlineLink label="Edit" onPress={() => router.push('/category-edit')} />}>
         <ManagementCard>
           <Text style={styles.code}>{categoryDetail.code}</Text>
           <Text style={styles.title}>{categoryDetail.name}</Text>
           <Text style={styles.description}>{categoryDetail.description}</Text>
-        </ManagementCard>
-      </ManagementSection>
-
-      <ManagementSection
-        title="Details"
-        action={<ManagementInlineLink label="Edit" onPress={() => router.push('/category-edit')} />}>
-        <ManagementCard>
-          <View style={styles.metaStack}>
-            <ManagementMetaRow icon="tag" label="Code" value={categoryDetail.code} />
-            <ManagementMetaRow icon="image" label="Icon" value="Icon linked for category card" />
-            <ManagementMetaRow icon="clock" label="Created At" value={categoryDetail.createdAt} />
-            <ManagementMetaRow icon="refresh-cw" label="Updated At" value={categoryDetail.updatedAt} />
-          </View>
         </ManagementCard>
       </ManagementSection>
     </ManagementScreen>
@@ -66,8 +54,5 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
-  },
-  metaStack: {
-    gap: 14,
   },
 });

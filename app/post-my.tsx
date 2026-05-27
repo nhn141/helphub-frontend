@@ -6,7 +6,6 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
   getMyPosts,
-  formatPostDateTime,
   type PostSummary,
 } from '@/components/post/post-api';
 import {
@@ -109,10 +108,21 @@ export default function PostMyScreen() {
                   <PostVisibilityBadge visibility={item.visibility} />
                 </View>
                 {item.supportRequestTitle ? (
-                  <Text style={styles.requestTitle}>{item.supportRequestTitle}</Text>
+                  <Pressable
+                    accessibilityRole={item.supportRequestId ? 'button' : undefined}
+                    disabled={!item.supportRequestId}
+                    onPress={() => {
+                      if (!item.supportRequestId) return;
+
+                      router.push({
+                        pathname: '/support-request-detail',
+                        params: { id: item.supportRequestId },
+                      });
+                    }}>
+                    <Text style={styles.requestTitle}>{item.supportRequestTitle}</Text>
+                  </Pressable>
                 ) : null}
                 <Text style={styles.content} numberOfLines={3}>{item.content}</Text>
-                <Text style={styles.meta}>Updated: {formatPostDateTime(item.updatedAt)}</Text>
                 <View style={styles.buttonRow}>
                   <View style={styles.buttonCell}>
                     <PostButton
@@ -178,12 +188,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: authPalette.muted,
-    fontFamily: Fonts.rounded,
-  },
-  meta: {
-    marginTop: 12,
-    fontSize: 13,
-    color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
   },
   buttonRow: {

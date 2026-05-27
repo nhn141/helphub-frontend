@@ -7,7 +7,6 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
   deletePost,
-  formatPostDateTime,
   getPostById,
   type PostDetail,
 } from '@/components/post/post-api';
@@ -16,7 +15,6 @@ import {
   PostCard,
   PostError,
   PostLoading,
-  PostMetaRow,
   PostScreen,
   PostSection,
   PostStatusBadge,
@@ -126,13 +124,6 @@ export default function PostDeleteScreen() {
               </Text>
             </View>
           </View>
-          <View style={styles.metaStack}>
-            <PostMetaRow
-              icon="clock"
-              label="Updated At"
-              value={formatPostDateTime(post.updatedAt)}
-            />
-          </View>
         </PostCard>
       </PostSection>
 
@@ -178,10 +169,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
-  },
-  metaStack: {
-    marginTop: 18,
-    gap: 14,
   },
   authorRow: {
     alignItems: 'center',

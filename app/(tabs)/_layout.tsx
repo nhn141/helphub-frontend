@@ -8,7 +8,11 @@ import { connectChatRealtime, getUnreadNotificationCount } from '@/components/ch
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { HapticTab } from '@/components/haptic-tab';
 import {
+  clearMessageNotificationMeta,
+  clearNotificationItems,
   setUnreadNotificationCount,
+  upsertMessageNotificationMeta,
+  upsertNotificationItem,
   useUnreadNotificationCount,
 } from '@/components/notification/notification-state';
 import { canManageCategories, canManageSupportLocations } from '@/constants/role-access';
@@ -21,33 +25,49 @@ export default function TabLayout() {
 
   useEffect(() => {
     if (!session?.accessToken) {
+      clearMessageNotificationMeta();
+      clearNotificationItems();
       setUnreadNotificationCount(0);
       return;
     }
 
     let isActive = true;
+    const accessToken = session.accessToken;
 
-    getUnreadNotificationCount(session.accessToken)
-      .then((response) => {
-        if (isActive) {
-          setUnreadNotificationCount(Number(response.unreadCount ?? 0));
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setUnreadNotificationCount(0);
-        }
-      });
+    function refreshUnreadCount() {
+      getUnreadNotificationCount(accessToken)
+        .then((response) => {
+          if (isActive) {
+            setUnreadNotificationCount(Number(response.unreadCount ?? 0));
+          }
+        })
+        .catch(() => {
+          if (isActive) {
+            setUnreadNotificationCount(0);
+          }
+        });
+    }
+
+    refreshUnreadCount();
 
     const connection = connectChatRealtime(
-      session.accessToken,
+      accessToken,
       {
+        onMessage(payload) {
+          upsertMessageNotificationMeta(payload.message);
+        },
         onNotification(payload) {
+          upsertNotificationItem(payload.notification);
           setUnreadNotificationCount(Number(payload.unreadCount ?? 0));
+        },
+        onStatusChange(status) {
+          if (status === 'connected') {
+            refreshUnreadCount();
+          }
         },
       },
       {
-        messages: false,
+        messages: true,
         notifications: true,
       }
     );

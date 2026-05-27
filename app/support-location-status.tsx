@@ -52,7 +52,7 @@ export default function SupportLocationStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing support location id.');
+      setError('Missing support location.');
       return;
     }
 
@@ -83,7 +83,7 @@ export default function SupportLocationStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing support location id.');
+      setError('Missing support location.');
       return;
     }
 

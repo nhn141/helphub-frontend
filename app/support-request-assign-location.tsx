@@ -53,7 +53,7 @@ export default function SupportRequestAssignLocationScreen() {
     }
 
     if (!id) {
-      setError('Missing support request id.');
+      setError('Missing support request.');
       return;
     }
 

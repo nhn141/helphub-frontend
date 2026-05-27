@@ -6,7 +6,6 @@ import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
-  formatDateTime,
   getMySupportRequests,
   type SupportRequestStatus,
   type SupportRequestSummary,
@@ -111,7 +110,6 @@ export default function SupportRequestMyScreen() {
               <Text style={styles.title}>{item.title}</Text>
               <View style={styles.metaStack}>
                 <RequestMetaRow icon="map-pin" label="Address" value={item.address ?? 'Not provided'} />
-                <RequestMetaRow icon="clock" label="Created At" value={formatDateTime(item.createdAt)} />
               </View>
               <View style={styles.buttonRow}>
                 <View style={styles.buttonCell}>

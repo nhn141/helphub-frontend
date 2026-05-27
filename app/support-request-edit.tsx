@@ -48,7 +48,7 @@ export default function SupportRequestEditScreen() {
     }
 
     if (!id) {
-      setError('Missing support request id.');
+      setError('Missing support request.');
       return;
     }
 

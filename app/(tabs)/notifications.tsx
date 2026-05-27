@@ -19,17 +19,20 @@ import {
   type NotificationItem,
 } from '@/components/chat/chat-api';
 import {
+  clearNotificationItems,
   decrementUnreadNotificationCount,
+  type MessageNotificationMeta,
+  removeNotificationItems,
+  setNotificationItems,
   setUnreadNotificationCount,
+  updateNotificationItems,
+  useMessageNotificationMetaByMessageId,
+  useNotificationItems,
   useUnreadNotificationCount,
+  upsertMessageNotificationMeta,
+  upsertNotificationItem,
 } from '@/components/notification/notification-state';
 import { Fonts } from '@/constants/theme';
-
-type MessageNotificationMeta = {
-  conversationId: string;
-  senderId: string | null;
-  senderName: string | null;
-};
 
 type DisplayNotification = {
   id: string;
@@ -59,7 +62,8 @@ function getLatestNotification(notifications: NotificationItem[]) {
 
 function buildDisplayNotifications(
   notifications: NotificationItem[],
-  messageMeta: Record<string, MessageNotificationMeta>
+  messageMeta: Record<string, MessageNotificationMeta>,
+  realtimeMessageMeta: Record<string, MessageNotificationMeta>
 ) {
   const messageGroups = new Map<string, NotificationItem[]>();
   const displayNotifications: DisplayNotification[] = [];
@@ -68,8 +72,14 @@ function buildDisplayNotifications(
     const conversationId = extractConversationId(notification.actionUrl);
 
     if (notification.referenceType === 'MESSAGE' && conversationId) {
-      const meta = messageMeta[notification.id];
-      const senderKey = meta?.senderId ?? 'unknown';
+      if (notification.isRead) {
+        return;
+      }
+
+      const meta =
+        messageMeta[notification.id] ??
+        (notification.referenceId ? realtimeMessageMeta[notification.referenceId] : undefined);
+      const senderKey = meta?.senderId ?? notification.referenceId ?? notification.id;
       const groupKey = `message:${conversationId}:${senderKey}`;
       const group = messageGroups.get(groupKey) ?? [];
 
@@ -96,13 +106,16 @@ function buildDisplayNotifications(
     const messageCount = unreadCount > 0 ? unreadCount : group.length;
     const senderMeta =
       messageMeta[latestNotification.id] ??
+      (latestNotification.referenceId
+        ? realtimeMessageMeta[latestNotification.referenceId]
+        : undefined) ??
       group.map((notification) => messageMeta[notification.id]).find(Boolean);
-    const senderName = senderMeta?.senderName?.trim() || 'Ai đó';
+    const senderName = senderMeta?.senderName?.trim() || 'Ai \u0111\u00f3';
 
     displayNotifications.push({
       id: groupKey,
       notifications: group,
-      content: `${senderName} đã gửi ${messageCount} tin nhắn cho bạn`,
+      content: `${senderName} \u0111\u00e3 g\u1eedi ${messageCount} tin nh\u1eafn cho b\u1ea1n`,
       createdAt: latestNotification.createdAt,
       isMessage: true,
       isRead: unreadCount === 0,
@@ -119,7 +132,8 @@ function buildDisplayNotifications(
 export default function NotificationsTabScreen() {
   const router = useRouter();
   const { isAuthenticated, session } = useAuth();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const notifications = useNotificationItems();
+  const realtimeMessageMeta = useMessageNotificationMetaByMessageId();
   const unreadCount = useUnreadNotificationCount();
   const [messageNotificationMeta, setMessageNotificationMeta] = useState<
     Record<string, MessageNotificationMeta>
@@ -128,8 +142,8 @@ export default function NotificationsTabScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const displayNotifications = useMemo(
-    () => buildDisplayNotifications(notifications, messageNotificationMeta),
-    [messageNotificationMeta, notifications]
+    () => buildDisplayNotifications(notifications, messageNotificationMeta, realtimeMessageMeta),
+    [messageNotificationMeta, notifications, realtimeMessageMeta]
   );
 
   const loadNotifications = useCallback(async () => {
@@ -146,7 +160,7 @@ export default function NotificationsTabScreen() {
         getUnreadNotificationCount(session.accessToken),
       ]);
 
-      setNotifications(notificationData);
+      setNotificationItems(notificationData);
       setUnreadNotificationCount(Number(unreadData.unreadCount ?? 0));
     } catch (loadError: any) {
       setError(loadError?.message ?? 'Could not load notifications.');
@@ -159,7 +173,7 @@ export default function NotificationsTabScreen() {
     if (isAuthenticated) {
       loadNotifications();
     } else {
-      setNotifications([]);
+      clearNotificationItems();
       setMessageNotificationMeta({});
       setUnreadNotificationCount(0);
     }
@@ -179,7 +193,8 @@ export default function NotificationsTabScreen() {
         notification.referenceType !== 'MESSAGE' ||
         !conversationId ||
         !notification.referenceId ||
-        messageNotificationMeta[notification.id]
+        messageNotificationMeta[notification.id] ||
+        realtimeMessageMeta[notification.referenceId]
       ) {
         return;
       }
@@ -254,45 +269,63 @@ export default function NotificationsTabScreen() {
     return () => {
       isActive = false;
     };
-  }, [messageNotificationMeta, notifications, session?.accessToken]);
+  }, [messageNotificationMeta, notifications, realtimeMessageMeta, session?.accessToken]);
 
   useEffect(() => {
     if (!session?.accessToken) {
       return;
     }
 
+    let shouldSyncAfterConnect = true;
+
     const connection = connectChatRealtime(
       session.accessToken,
       {
+        onMessage(payload) {
+          upsertMessageNotificationMeta(payload.message);
+        },
         onNotification(payload) {
-          setNotifications((current) => [
-            payload.notification,
-            ...current.filter((notification) => notification.id !== payload.notification.id),
-          ]);
+          upsertNotificationItem(payload.notification);
           setUnreadNotificationCount(Number(payload.unreadCount ?? 0));
+        },
+        onStatusChange(status) {
+          if (status === 'connected' && shouldSyncAfterConnect) {
+            shouldSyncAfterConnect = false;
+            void loadNotifications();
+          }
+        },
+        onError(message) {
+          setError((current) => current ?? message);
         },
       },
       {
-        messages: false,
+        messages: true,
         notifications: true,
       }
     );
 
     return () => {
+      shouldSyncAfterConnect = false;
       connection.disconnect();
     };
-  }, [session?.accessToken]);
+  }, [loadNotifications, session?.accessToken]);
 
   async function markDisplayNotificationRead(displayNotification: DisplayNotification) {
     if (!session?.accessToken) {
       return;
     }
 
+    const displayNotificationIds = displayNotification.notifications.map(
+      (notification) => notification.id
+    );
     const unreadNotifications = displayNotification.notifications.filter(
       (notification) => !notification.isRead
     );
 
     if (unreadNotifications.length === 0) {
+      if (displayNotification.isMessage) {
+        removeNotificationItems(displayNotificationIds);
+      }
       return;
     }
 
@@ -310,10 +343,16 @@ export default function NotificationsTabScreen() {
     });
 
     if (updatedNotifications.size > 0) {
-      setNotifications((current) =>
-        current.map((notification) => updatedNotifications.get(notification.id) ?? notification)
-      );
       decrementUnreadNotificationCount(updatedNotifications.size);
+
+      if (
+        displayNotification.isMessage &&
+        updatedNotifications.size === unreadNotifications.length
+      ) {
+        removeNotificationItems(displayNotificationIds);
+      } else {
+        updateNotificationItems(updatedNotifications);
+      }
     }
 
     if (updatedNotifications.size < unreadNotifications.length) {
@@ -347,8 +386,8 @@ export default function NotificationsTabScreen() {
 
     try {
       await markAllNotificationsAsRead(session.accessToken);
-      setNotifications((current) =>
-        current.map((notification) => ({
+      setNotificationItems(
+        notifications.map((notification) => ({
           ...notification,
           isRead: true,
         }))

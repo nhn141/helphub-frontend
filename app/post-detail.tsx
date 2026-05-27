@@ -248,7 +248,23 @@ export default function PostDetailScreen() {
 
         {/* Post Content */}
         {post.supportRequestTitle ? (
-          <Text style={styles.supportTitle}>Related: {post.supportRequestTitle}</Text>
+          <Pressable
+            accessibilityRole={post.supportRequestId ? 'button' : undefined}
+            disabled={!post.supportRequestId}
+            onPress={() => {
+              if (!post.supportRequestId) return;
+
+              router.push({
+                pathname: '/support-request-detail',
+                params: { id: post.supportRequestId },
+              });
+            }}
+            style={styles.supportTitleLink}>
+            <Text style={styles.supportTitle}>Related: {post.supportRequestTitle}</Text>
+            {post.supportRequestId ? (
+              <Feather name="arrow-right" size={14} color={authPalette.primaryDark} />
+            ) : null}
+          </Pressable>
         ) : null}
         <Text style={styles.content}>{post.content}</Text>
 
@@ -376,7 +392,15 @@ const styles = StyleSheet.create({
     color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
     fontWeight: 'bold',
+    flex: 1,
+  },
+  supportTitleLink: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 6,
     marginBottom: 8,
+    maxWidth: '100%',
   },
   content: {
     fontSize: 16,

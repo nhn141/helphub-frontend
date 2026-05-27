@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -54,6 +54,15 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
 
   const imageMedia = media.filter((mediaItem) => mediaItem.fileType === 'IMAGE');
   const firstImage = imageMedia[0] ?? null;
+  const openSupportRequest = (event: GestureResponderEvent) => {
+    if (!item.supportRequestId) return;
+
+    event.stopPropagation();
+    router.push({
+      pathname: '/support-request-detail',
+      params: { id: item.supportRequestId },
+    });
+  };
 
   return (
     <Pressable
@@ -107,12 +116,19 @@ function PostFeedCard({ item, role, session }: { item: PostSummary; role: string
       ) : null}
 
       {item.supportRequestTitle ? (
-        <View style={styles.supportTag}>
+        <Pressable
+          accessibilityRole={item.supportRequestId ? 'button' : undefined}
+          disabled={!item.supportRequestId}
+          onPress={openSupportRequest}
+          style={styles.supportTag}>
           <Feather name="link" size={14} color={authPalette.primaryDark} />
           <Text style={styles.supportTagText} numberOfLines={1}>
             {item.supportRequestTitle}
           </Text>
-        </View>
+          {item.supportRequestId ? (
+            <Feather name="arrow-right" size={14} color={authPalette.primaryDark} />
+          ) : null}
+        </Pressable>
       ) : null}
 
       {/* Stats Row */}

@@ -17,7 +17,6 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { UserAvatar } from '@/components/user/user-avatar';
 import {
-  formatDateTime,
   getStatusTone,
   getSupportRequests,
   type SupportRequestStatus,
@@ -196,10 +195,6 @@ export default function RequestsTabScreen() {
                   <View style={styles.cardMetaRow}>
                     <Feather name="map-pin" size={14} color={authPalette.muted} />
                     <Text style={styles.cardBody}>Address: {item.address ?? 'Not provided'}</Text>
-                  </View>
-                  <View style={styles.cardMetaRow}>
-                    <Feather name="calendar" size={14} color={authPalette.muted} />
-                    <Text style={styles.cardBody}>Created: {formatDateTime(item.createdAt)}</Text>
                   </View>
                   <Text style={styles.openDetail}>Open detail</Text>
                 </SurfaceCard>

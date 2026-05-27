@@ -54,6 +54,7 @@ type RequestCardProps = {
 type RequestStatus =
   | 'PENDING'
   | 'APPROVED'
+  | 'ACCEPTED'
   | 'IN_PROGRESS'
   | 'REJECTED'
   | 'COMPLETED'
@@ -247,6 +248,10 @@ const statusStyles = {
     text: { color: '#9A6500' },
   },
   APPROVED: {
+    surface: { backgroundColor: '#E4F7EB' },
+    text: { color: authPalette.primaryDark },
+  },
+  ACCEPTED: {
     surface: { backgroundColor: '#E4F7EB' },
     text: { color: authPalette.primaryDark },
   },

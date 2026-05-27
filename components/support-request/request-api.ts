@@ -8,6 +8,13 @@ export type SupportRequestStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 
+export type VolunteerAssignmentStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'COMPLETED';
+
 export type CategorySummary = {
   id: string;
   name: string;
@@ -49,6 +56,26 @@ export type SupportRequestPayload = {
   address?: string;
   latitude?: number;
   longitude?: number;
+};
+
+export type VolunteerAssignment = {
+  supportRequestId: string;
+  supportRequestTitle: string;
+  supportRequestStatus: SupportRequestStatus;
+  requesterId: string;
+  requesterName: string;
+  volunteerId: string;
+  volunteerName: string;
+  volunteerEmail: string;
+  volunteerPhone: string | null;
+  status: VolunteerAssignmentStatus;
+  reviewedBy: string | null;
+  reviewedByName: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+  conversationId: string | null;
+  assignedAt: string;
+  updatedAt: string | null;
 };
 
 export function getStatusTone(status: SupportRequestStatus): 'green' | 'mint' | 'amber' | 'slate' | 'red' {
@@ -198,6 +225,103 @@ export async function assignSupportRequestToLocation(
     {
       accessToken,
       body: JSON.stringify({ supportLocationId }),
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function applyToSupportRequest(accessToken: string, supportRequestId: string) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}/apply`,
+    {
+      accessToken,
+      method: 'POST',
+    }
+  );
+
+  return response.data;
+}
+
+export async function cancelMyVolunteerAssignment(accessToken: string, supportRequestId: string) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}/cancel`,
+    {
+      accessToken,
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function completeMyVolunteerAssignment(accessToken: string, supportRequestId: string) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}/complete`,
+    {
+      accessToken,
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function getMyVolunteerAssignments(accessToken: string) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment[]>>(
+    '/volunteer-assignments/my-assignments',
+    {
+      accessToken,
+      method: 'GET',
+    }
+  );
+
+  return response.data;
+}
+
+export async function getVolunteerAssignmentsBySupportRequest(
+  accessToken: string,
+  supportRequestId: string
+) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment[]>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}`,
+    {
+      accessToken,
+      method: 'GET',
+    }
+  );
+
+  return response.data;
+}
+
+export async function approveVolunteerAssignment(
+  accessToken: string,
+  supportRequestId: string,
+  volunteerId: string
+) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}/volunteers/${volunteerId}/approve`,
+    {
+      accessToken,
+      method: 'PATCH',
+    }
+  );
+
+  return response.data;
+}
+
+export async function rejectVolunteerAssignment(
+  accessToken: string,
+  supportRequestId: string,
+  volunteerId: string,
+  rejectionReason: string
+) {
+  const response = await apiRequest<ApiEnvelope<VolunteerAssignment>>(
+    `/volunteer-assignments/support-requests/${supportRequestId}/volunteers/${volunteerId}/reject`,
+    {
+      accessToken,
+      body: JSON.stringify({ rejectionReason }),
       method: 'PATCH',
     }
   );

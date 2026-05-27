@@ -7,7 +7,6 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import {
   formatCoordinate,
-  formatLocationDateTime,
   getSupportLocationById,
   type SupportLocationDetail,
 } from '@/components/management/support-location-api';
@@ -41,7 +40,7 @@ export default function SupportLocationDetailScreen() {
     }
 
     if (!id) {
-      setError('Missing support location id.');
+      setError('Missing support location.');
       return;
     }
 
@@ -160,32 +159,16 @@ export default function SupportLocationDetailScreen() {
           </ManagementSection>
 
           <ManagementSection
-            title="Assignments"
-            action={
-              <ManagementInlineLink
-                label="Assign Request"
-                onPress={() =>
-                  router.push({
-                    pathname: '/support-location-assign-request',
-                    params: detailParams,
-                  })
-                }
-              />
-            }>
-            <ManagementCard>
-              <View style={styles.metaStack}>
-                <ManagementMetaRow
-                  icon="clock"
-                  label="Created At"
-                  value={formatLocationDateTime(location.createdAt)}
-                />
-                <ManagementMetaRow
-                  icon="refresh-cw"
-                  label="Updated At"
-                  value={formatLocationDateTime(location.updatedAt)}
-                />
-              </View>
-            </ManagementCard>
+            title="Assignments">
+            <ManagementButton
+              label="Assign Request"
+              onPress={() =>
+                router.push({
+                  pathname: '/support-location-assign-request',
+                  params: detailParams,
+                })
+              }
+            />
           </ManagementSection>
         </>
       ) : null}
