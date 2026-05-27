@@ -110,7 +110,7 @@ export default function ProfileEditScreen() {
         phone: normalizedPhone || null,
       });
 
-      router.replace('/profile-detail');
+      router.replace('/(tabs)/profile');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : getAuthErrorMessage(saveError));
     } finally {
@@ -121,7 +121,7 @@ export default function ProfileEditScreen() {
   return (
     <ManagementScreen
       title="Edit Profile"
-      onBackPress={() => router.push('/profile-detail')}
+      onBackPress={() => router.replace('/(tabs)/profile')}
       rightSlot={user ? <ManagementBadge label={user.role} tone="green" /> : undefined}>
       <ManagementSection title="Avatar">
         <ManagementCard>
@@ -167,7 +167,7 @@ export default function ProfileEditScreen() {
           label={isSaving ? 'Saving...' : 'Save Profile'}
           onPress={handleSaveProfile}
         />
-        <ManagementButton label="Cancel" onPress={() => router.push('/profile-detail')} variant="outline" />
+        <ManagementButton label="Cancel" onPress={() => router.replace('/(tabs)/profile')} variant="outline" />
       </View>
     </ManagementScreen>
   );
