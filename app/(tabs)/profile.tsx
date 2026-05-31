@@ -8,7 +8,7 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { UserAvatar } from '@/components/user/user-avatar';
-import { getRoleTone } from '@/constants/role-access';
+import { canManageUsers, getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function ProfileTabScreen() {
@@ -78,6 +78,16 @@ export default function ProfileTabScreen() {
             style={styles.profileButton}>
             <Feather name="edit-2" size={16} color={authPalette.primaryDark} />
             <Text style={styles.profileButtonText}>Edit profile</Text>
+          </Pressable>
+        ) : null}
+
+        {canManageUsers(role) ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/users-list')}
+            style={styles.adminButton}>
+            <Feather name="users" size={16} color="#fff" />
+            <Text style={styles.adminButtonText}>Manage users</Text>
           </Pressable>
         ) : null}
 
@@ -162,6 +172,21 @@ const styles = StyleSheet.create({
   profileButtonText: {
     fontSize: 14,
     color: authPalette.primaryDark,
+    fontFamily: Fonts.rounded,
+  },
+  adminButton: {
+    marginTop: 12,
+    minHeight: 44,
+    borderRadius: 22,
+    backgroundColor: authPalette.primaryDark,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  adminButtonText: {
+    fontSize: 14,
+    color: '#fff',
     fontFamily: Fonts.rounded,
   },
   logoutButton: {

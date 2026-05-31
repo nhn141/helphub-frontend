@@ -328,3 +328,132 @@ export async function rejectVolunteerAssignment(
 
   return response.data;
 }
+
+// ─── Support Needs & Contributions ───────────────────────────────────────────
+
+export type SupportType = 'MONEY' | 'GOODS';
+
+export type SupportNeedUnit =
+  | 'VND'
+  | 'KG'
+  | 'PIECE'
+  | 'BOX'
+  | 'LITER'
+  | 'PACKAGE'
+  | 'SET'
+  | 'PERSON'
+  | 'OTHER';
+
+export const SUPPORT_NEED_UNITS: { value: SupportNeedUnit; label: string }[] = [
+  { value: 'VND', label: 'VND (money)' },
+  { value: 'KG', label: 'KG' },
+  { value: 'PIECE', label: 'Piece / Item' },
+  { value: 'BOX', label: 'Box / Carton' },
+  { value: 'LITER', label: 'Liter' },
+  { value: 'PACKAGE', label: 'Package' },
+  { value: 'SET', label: 'Set' },
+  { value: 'PERSON', label: 'Person' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+export const SUPPORT_TYPES: { value: SupportType; label: string }[] = [
+  { value: 'GOODS', label: 'Goods' },
+  { value: 'MONEY', label: 'Money' },
+];
+
+export type SupportNeed = {
+  id: string;
+  supportRequestId: string;
+  supportRequestTitle: string;
+  supportType: SupportType;
+  needName: string;
+  unit: SupportNeedUnit;
+  requiredQuantity: number;
+  receivedQuantity: number;
+  remainingQuantity: number;
+  isFulfilled: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type SupportNeedPayload = {
+  supportType: SupportType;
+  needName: string;
+  unit: SupportNeedUnit;
+  requiredQuantity: number;
+};
+
+export type Contribution = {
+  id: string;
+  supportNeedId: string;
+  needName: string;
+  contributorId: string;
+  contributorName: string;
+  quantity: number;
+  note: string | null;
+  createdAt: string;
+};
+
+export type ContributionPayload = {
+  quantity: number;
+  note?: string;
+};
+
+export async function getSupportNeeds(accessToken: string, supportRequestId: string) {
+  const response = await apiRequest<ApiEnvelope<SupportNeed[]>>(
+    `/support-requests/${supportRequestId}/needs`,
+    { accessToken, method: 'GET' }
+  );
+  return response.data;
+}
+
+export async function createSupportNeed(
+  accessToken: string,
+  supportRequestId: string,
+  payload: SupportNeedPayload
+) {
+  const response = await apiRequest<ApiEnvelope<SupportNeed>>(
+    `/support-requests/${supportRequestId}/needs`,
+    { accessToken, method: 'POST', body: JSON.stringify(payload) }
+  );
+  return response.data;
+}
+
+export async function updateSupportNeed(
+  accessToken: string,
+  needId: string,
+  payload: SupportNeedPayload
+) {
+  const response = await apiRequest<ApiEnvelope<SupportNeed>>(
+    `/support-needs/${needId}`,
+    { accessToken, method: 'PUT', body: JSON.stringify(payload) }
+  );
+  return response.data;
+}
+
+export async function deleteSupportNeed(accessToken: string, needId: string) {
+  await apiRequest<ApiEnvelope<null>>(
+    `/support-needs/${needId}`,
+    { accessToken, method: 'DELETE' }
+  );
+}
+
+export async function getContributions(accessToken: string, needId: string) {
+  const response = await apiRequest<ApiEnvelope<Contribution[]>>(
+    `/support-needs/${needId}/contributions`,
+    { accessToken, method: 'GET' }
+  );
+  return response.data;
+}
+
+export async function createContribution(
+  accessToken: string,
+  needId: string,
+  payload: ContributionPayload
+) {
+  const response = await apiRequest<ApiEnvelope<Contribution>>(
+    `/support-needs/${needId}/contributions`,
+    { accessToken, method: 'POST', body: JSON.stringify(payload) }
+  );
+  return response.data;
+}

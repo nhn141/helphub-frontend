@@ -1,8 +1,15 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { categoryDetail } from '@/components/management/category-mocks';
+import { getAuthErrorMessage } from '@/components/auth/auth-api';
+import { authPalette } from '@/components/auth/auth-ui';
+import { useAuth } from '@/components/auth/auth-provider';
+import {
+  getCategoryById,
+  updateCategory,
+  type CategoryDetail,
+} from '@/components/management/category-api';
 import {
   ManagementBadge,
   ManagementButton,
@@ -10,24 +17,124 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { Fonts } from '@/constants/theme';
+
+function getStringParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default function CategoryEditScreen() {
-  const router = useRouter();
-  const [name, setName] = useState(categoryDetail.name);
-  const [code, setCode] = useState(categoryDetail.code);
-  const [description, setDescription] = useState(categoryDetail.description);
-  const [iconUrl, setIconUrl] = useState(categoryDetail.iconUrl);
+  const params = useLocalSearchParams();
+  const id = getStringParam(params.id);
+  const { session } = useAuth();
+
+  const [category, setCategory] = useState<CategoryDetail | null>(null);
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [description, setDescription] = useState('');
+  const [iconUrl, setIconUrl] = useState('');
+
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const detailRoute = {
+    pathname: '/category-detail' as const,
+    params: id ? { id } : undefined,
+  };
+
+  const loadCategory = useCallback(async () => {
+    if (!session?.accessToken) {
+      router.replace('/login' as never);
+      return;
+    }
+
+    if (!id) {
+      setError('Missing category ID.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const data = await getCategoryById(session.accessToken, id);
+      setCategory(data);
+      setName(data.name);
+      setCode(data.code);
+      setDescription(data.description ?? '');
+      setIconUrl(data.iconUrl ?? '');
+    } catch (loadError) {
+      setError(getAuthErrorMessage(loadError));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [id, session?.accessToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCategory();
+    }, [loadCategory])
+  );
+
+  const handleSave = async () => {
+    if (!session?.accessToken) {
+      router.replace('/login' as never);
+      return;
+    }
+
+    if (!id) {
+      setError('Missing category ID.');
+      return;
+    }
+
+    if (!name.trim()) {
+      setError('Category name is required.');
+      return;
+    }
+
+    if (!code.trim()) {
+      setError('Category code is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      await updateCategory(session.accessToken, id, {
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        description: description.trim() || null,
+        iconUrl: iconUrl.trim() || null,
+      });
+
+      router.replace(detailRoute);
+    } catch (saveError) {
+      setError(getAuthErrorMessage(saveError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <ManagementScreen
       title="Edit Category"
-      onBackPress={() => router.push('/category-detail')}
+      onBackPress={() => router.push(detailRoute)}
       rightSlot={
-        <ManagementBadge label={categoryDetail.isActive ? 'ACTIVE' : 'INACTIVE'} tone={categoryDetail.isActive ? 'green' : 'slate'} />
+        category ? (
+          <ManagementBadge
+            label={category.isActive ? 'ACTIVE' : 'INACTIVE'}
+            tone={category.isActive ? 'green' : 'slate'}
+          />
+        ) : undefined
       }>
+      {isLoading ? <Text style={styles.helperText}>Loading category...</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
       <ManagementSection title="Category Info">
         <ManagementField label="Name" onChangeText={setName} value={name} />
-        <ManagementField label="Code" onChangeText={setCode} value={code} />
+        <ManagementField label="Code" onChangeText={setCode} placeholder="e.g. MEDICAL, FOOD" value={code} />
         <ManagementField
           label="Description"
           multiline
@@ -39,8 +146,17 @@ export default function CategoryEditScreen() {
       </ManagementSection>
 
       <View style={styles.buttonStack}>
-        <ManagementButton label="Save Changes" onPress={() => router.push('/category-detail')} />
-        <ManagementButton label="Cancel" onPress={() => router.push('/category-detail')} variant="outline" />
+        <ManagementButton
+          disabled={isSubmitting || isLoading}
+          label={isSubmitting ? 'Saving...' : 'Save Changes'}
+          onPress={handleSave}
+        />
+        <ManagementButton
+          disabled={isSubmitting}
+          label="Cancel"
+          onPress={() => router.push(detailRoute)}
+          variant="outline"
+        />
       </View>
     </ManagementScreen>
   );
@@ -49,5 +165,21 @@ export default function CategoryEditScreen() {
 const styles = StyleSheet.create({
   buttonStack: {
     gap: 12,
+  },
+  helperText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: authPalette.muted,
+    fontFamily: Fonts.rounded,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#B42318',
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: Fonts.rounded,
+    marginHorizontal: 16,
+    marginBottom: 8,
   },
 });

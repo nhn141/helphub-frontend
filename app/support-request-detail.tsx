@@ -12,18 +12,33 @@ import {
   approveVolunteerAssignment,
   cancelMyVolunteerAssignment,
   completeMyVolunteerAssignment,
+  createContribution,
+  createSupportNeed,
+  deleteSupportNeed,
   formatDateTime,
+  getContributions,
+  getSupportNeeds,
   getSupportRequestById,
   approveSupportRequest,
   getMyVolunteerAssignments,
   getVolunteerAssignmentsBySupportRequest,
   rejectVolunteerAssignment,
+  updateSupportNeed,
+  SUPPORT_NEED_UNITS,
+  SUPPORT_TYPES,
+  type Contribution,
+  type ContributionPayload,
+  type SupportNeed,
+  type SupportNeedPayload,
+  type SupportNeedUnit,
   type SupportRequestDetail,
+  type SupportType,
   type VolunteerAssignment,
 } from '@/components/support-request/request-api';
 import {
   RequestButton,
   RequestCard,
+  RequestChoiceGroup,
   RequestField,
   RequestScreen,
   RequestStatusBadge,
@@ -47,6 +62,30 @@ export default function SupportRequestDetailScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [rejectingVolunteerId, setRejectingVolunteerId] = useState<string | null>(null);
   const [volunteerRejectionReason, setVolunteerRejectionReason] = useState('');
+
+  // Support Needs state
+  const [supportNeeds, setSupportNeeds] = useState<SupportNeed[]>([]);
+  const [needsError, setNeedsError] = useState('');
+  const [isNeedsLoading, setIsNeedsLoading] = useState(false);
+
+  // Need form (add / edit inline)
+  const [showNeedForm, setShowNeedForm] = useState(false);
+  const [editingNeedId, setEditingNeedId] = useState<string | null>(null);
+  const [needFormSupportType, setNeedFormSupportType] = useState<SupportType>('GOODS');
+  const [needFormName, setNeedFormName] = useState('');
+  const [needFormUnit, setNeedFormUnit] = useState<SupportNeedUnit>('PIECE');
+  const [needFormQty, setNeedFormQty] = useState('');
+  const [needFormError, setNeedFormError] = useState('');
+  const [isSavingNeed, setIsSavingNeed] = useState(false);
+
+  // Contributions per need
+  const [contributions, setContributions] = useState<Record<string, Contribution[]>>({});
+  const [expandedContribNeedId, setExpandedContribNeedId] = useState<string | null>(null);
+  const [contributingNeedId, setContributingNeedId] = useState<string | null>(null);
+  const [contribQty, setContribQty] = useState('');
+  const [contribNote, setContribNote] = useState('');
+  const [contribError, setContribError] = useState('');
+  const [isContributing, setIsContributing] = useState(false);
 
   const canEdit =
     requestDetail?.status === 'PENDING' &&
@@ -82,6 +121,18 @@ export default function SupportRequestDetailScreen() {
     !myVolunteerAssignment;
 
   const [isActioning, setIsActioning] = useState(false);
+
+  const canManageNeeds =
+    Boolean(requestDetail) &&
+    user?.role === 'REQUESTER' &&
+    user.id === requestDetail?.requesterId;
+
+  const canContribute =
+    (requestDetail?.status === 'APPROVED' || requestDetail?.status === 'IN_PROGRESS') &&
+    (
+      (user?.role === 'VOLUNTEER' && myVolunteerAssignment?.status === 'ACCEPTED') ||
+      user?.role === 'COLLABORATOR'
+    );
 
   const backTarget = from === 'my' ? '/support-request-my' : '/(tabs)/requests';
 
@@ -276,10 +327,151 @@ export default function SupportRequestDetailScreen() {
     });
   };
 
+  const loadSupportNeeds = useCallback(async () => {
+    if (!session?.accessToken || !id) return;
+    setIsNeedsLoading(true);
+    setNeedsError('');
+    try {
+      const data = await getSupportNeeds(session.accessToken, id);
+      setSupportNeeds(data);
+    } catch (err) {
+      setNeedsError(getAuthErrorMessage(err));
+    } finally {
+      setIsNeedsLoading(false);
+    }
+  }, [id, session?.accessToken]);
+
+  const openAddNeedForm = () => {
+    setEditingNeedId(null);
+    setNeedFormSupportType('GOODS');
+    setNeedFormName('');
+    setNeedFormUnit('PIECE');
+    setNeedFormQty('');
+    setNeedFormError('');
+    setShowNeedForm(true);
+  };
+
+  const openEditNeedForm = (need: SupportNeed) => {
+    setEditingNeedId(need.id);
+    setNeedFormSupportType(need.supportType);
+    setNeedFormName(need.needName);
+    setNeedFormUnit(need.unit);
+    setNeedFormQty(String(need.requiredQuantity));
+    setNeedFormError('');
+    setShowNeedForm(true);
+  };
+
+  const cancelNeedForm = () => {
+    setShowNeedForm(false);
+    setEditingNeedId(null);
+    setNeedFormError('');
+  };
+
+  const handleSaveNeed = async () => {
+    if (!session?.accessToken || !id) return;
+    const qty = parseFloat(needFormQty);
+    if (!needFormName.trim()) {
+      setNeedFormError('Name of support needs cannot be blank.');
+      return;
+    }
+    if (isNaN(qty) || qty <= 0) {
+      setNeedFormError('The number must be greater than 0.');
+      return;
+    }
+    const payload: SupportNeedPayload = {
+      supportType: needFormSupportType,
+      needName: needFormName.trim(),
+      unit: needFormUnit,
+      requiredQuantity: qty,
+    };
+    setIsSavingNeed(true);
+    setNeedFormError('');
+    try {
+      if (editingNeedId) {
+        await updateSupportNeed(session.accessToken, editingNeedId, payload);
+      } else {
+        await createSupportNeed(session.accessToken, id, payload);
+      }
+      setShowNeedForm(false);
+      setEditingNeedId(null);
+      await loadSupportNeeds();
+    } catch (err) {
+      setNeedFormError(getAuthErrorMessage(err));
+    } finally {
+      setIsSavingNeed(false);
+    }
+  };
+
+  const handleDeleteNeed = async (needId: string) => {
+    if (!session?.accessToken) return;
+    setIsActioning(true);
+    try {
+      await deleteSupportNeed(session.accessToken, needId);
+      await loadSupportNeeds();
+    } catch (err) {
+      setNeedsError(getAuthErrorMessage(err));
+    } finally {
+      setIsActioning(false);
+    }
+  };
+
+  const toggleContributions = async (needId: string) => {
+    if (expandedContribNeedId === needId) {
+      setExpandedContribNeedId(null);
+      return;
+    }
+    setExpandedContribNeedId(needId);
+    if (!contributions[needId] && session?.accessToken) {
+      try {
+        const data = await getContributions(session.accessToken, needId);
+        setContributions((prev) => ({ ...prev, [needId]: data }));
+      } catch {
+        setContributions((prev) => ({ ...prev, [needId]: [] }));
+      }
+    }
+  };
+
+  const openContribForm = (needId: string) => {
+    setContributingNeedId(needId);
+    setContribQty('');
+    setContribNote('');
+    setContribError('');
+  };
+
+  const cancelContribForm = () => {
+    setContributingNeedId(null);
+    setContribError('');
+  };
+
+  const handleSubmitContribution = async (needId: string) => {
+    if (!session?.accessToken) return;
+    const qty = parseFloat(contribQty);
+    if (isNaN(qty) || qty <= 0) {
+      setContribError('The number must be greater than 0.');
+      return;
+    }
+    const payload: ContributionPayload = { quantity: qty, note: contribNote.trim() || undefined };
+    setIsContributing(true);
+    setContribError('');
+    try {
+      await createContribution(session.accessToken, needId, payload);
+      setContributingNeedId(null);
+      // Reload contributions if expanded
+      const data = await getContributions(session.accessToken, needId);
+      setContributions((prev) => ({ ...prev, [needId]: data }));
+      await loadSupportNeeds();
+    } catch (err) {
+      setContribError(getAuthErrorMessage(err));
+    } finally {
+      setIsContributing(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadRequestDetail();
-    }, [loadRequestDetail])
+      loadSupportNeeds();
+    }, [loadRequestDetail, loadSupportNeeds])
   );
 
   useEffect(() => {
@@ -446,7 +638,7 @@ export default function SupportRequestDetailScreen() {
                       </View>
                     ) : null}
                     {myVolunteerAssignment.status === 'PENDING' ||
-                    myVolunteerAssignment.status === 'ACCEPTED' ? (
+                      myVolunteerAssignment.status === 'ACCEPTED' ? (
                       <View style={styles.assignmentAction}>
                         <RequestButton
                           label="Cancel"
@@ -579,6 +771,251 @@ export default function SupportRequestDetailScreen() {
               )}
             </View>
           ) : null}
+
+          {/* ── Support Needs Panel ── */}
+          <View style={styles.assignmentPanel}>
+            <View style={styles.assignmentPanelHeader}>
+              <View style={styles.needsPanelTitle}>
+                <Feather name="package" size={16} color={authPalette.primaryDark} />
+                <Text style={styles.assignmentTitle}>support needs</Text>
+              </View>
+              <Text style={styles.assignmentCount}>{supportNeeds.length}</Text>
+            </View>
+
+            {isNeedsLoading ? (
+              <Text style={styles.assignmentText}>Loading...</Text>
+            ) : needsError ? (
+              <Text style={[styles.assignmentText, { color: '#AE3F3A' }]}>{needsError}</Text>
+            ) : supportNeeds.length === 0 && !showNeedForm ? (
+              <Text style={styles.assignmentText}>No support needs have been added yet.</Text>
+            ) : null}
+
+            {/* List of needs */}
+            {supportNeeds.map((need) => {
+              const pct = need.requiredQuantity > 0
+                ? Math.min(need.receivedQuantity / need.requiredQuantity, 1)
+                : 0;
+              const pctDisplay = Math.round(pct * 100);
+              const unitLabel = SUPPORT_NEED_UNITS.find((u) => u.value === need.unit)?.label ?? need.unit;
+              const isExpanded = expandedContribNeedId === need.id;
+              const isContribFormOpen = contributingNeedId === need.id;
+              const isEditingThis = editingNeedId === need.id && showNeedForm;
+
+              return (
+                <View key={need.id} style={styles.needItem}>
+                  {/* Need header row */}
+                  <View style={styles.needHeaderRow}>
+                    <View style={styles.needInfo}>
+                      <View style={styles.needNameRow}>
+                        <Text style={styles.needName}>{need.needName}</Text>
+                        {need.isFulfilled && (
+                          <View style={styles.fulfilledBadge}>
+                            <Feather name="check" size={11} color="#1A7A4A" />
+                            <Text style={styles.fulfilledText}>Đủ</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.needQtyText}>
+                        {need.receivedQuantity} / {need.requiredQuantity} {unitLabel}
+                      </Text>
+                    </View>
+                    <View style={styles.needTypeBadge}>
+                      <Text style={styles.needTypeText}>
+                        {SUPPORT_TYPES.find((t) => t.value === need.supportType)?.label ?? need.supportType}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Progress bar */}
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${pctDisplay}%` as any, backgroundColor: need.isFulfilled ? '#22A06B' : authPalette.primaryDark }]} />
+                  </View>
+                  <Text style={styles.progressLabel}>{pctDisplay}%</Text>
+
+                  {/* Inline edit form for this need */}
+                  {isEditingThis ? null : (
+                    <View style={styles.needActions}>
+                      {/* REQUESTER: edit & delete */}
+                      {canManageNeeds && (
+                        <View style={styles.needActionRow}>
+                          <View style={styles.needActionBtn}>
+                            <RequestButton
+                              label="Edit"
+                              variant="outline"
+                              leftIcon={<Feather name="edit-2" size={13} color={authPalette.primaryDark} />}
+                              onPress={() => openEditNeedForm(need)}
+                              disabled={isActioning}
+                            />
+                          </View>
+                          <View style={styles.needActionBtn}>
+                            <RequestButton
+                              label="Delete"
+                              variant="danger"
+                              leftIcon={<Feather name="trash-2" size={13} color="#fff" />}
+                              onPress={() => handleDeleteNeed(need.id)}
+                              disabled={isActioning}
+                            />
+                          </View>
+                        </View>
+                      )}
+
+                      {/* VOLUNTEER/COLLABORATOR: contribute */}
+                      {canContribute && !need.isFulfilled && !isContribFormOpen && (
+                        <RequestButton
+                          label="Donate"
+                          leftIcon={<Feather name="plus-circle" size={14} color="#fff" />}
+                          onPress={() => openContribForm(need.id)}
+                          disabled={isActioning}
+                        />
+                      )}
+
+                      {/* Toggle contributions list */}
+                      <Pressable
+                        onPress={() => toggleContributions(need.id)}
+                        style={styles.contribToggle}>
+                        <Feather
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={14}
+                          color={authPalette.primaryDark}
+                        />
+                        <Text style={styles.contribToggleText}>
+                          {isExpanded ? 'Hide donations' : 'See donations'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {/* Inline contribute form */}
+                  {isContribFormOpen && (
+                    <View style={styles.inlineForm}>
+                      <Text style={styles.inlineFormTitle}>Donate to: {need.needName}</Text>
+                      <RequestField
+                        label={`Quantity (${unitLabel})`}
+                        keyboardType="decimal-pad"
+                        value={contribQty}
+                        onChangeText={setContribQty}
+                        placeholder="E.g.: 5"
+                      />
+                      <RequestField
+                        label="Note (optional)"
+                        multiline
+                        numberOfLines={2}
+                        value={contribNote}
+                        onChangeText={setContribNote}
+                        placeholder="E.g.: Send via post office"
+                      />
+                      {contribError ? (
+                        <Text style={styles.formError}>{contribError}</Text>
+                      ) : null}
+                      <View style={styles.formActions}>
+                        <View style={styles.formAction}>
+                          <RequestButton
+                            label="Xác nhận"
+                            onPress={() => handleSubmitContribution(need.id)}
+                            disabled={isContributing}
+                          />
+                        </View>
+                        <View style={styles.formAction}>
+                          <RequestButton
+                            label="Cancel"
+                            variant="outline"
+                            onPress={cancelContribForm}
+                            disabled={isContributing}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Contributions list */}
+                  {isExpanded && (
+                    <View style={styles.contribList}>
+                      {(contributions[need.id] ?? []).length === 0 ? (
+                        <Text style={styles.assignmentText}>No donations.</Text>
+                      ) : (s
+                        (contributions[need.id] ?? []).map((c) => (
+                          <View key={c.id} style={styles.contribItem}>
+                            <View style={styles.contribItemTop}>
+                              <Feather name="user" size={13} color={authPalette.primaryDark} />
+                              <Text style={styles.contribName}>{c.contributorName}</Text>
+                              <Text style={styles.contribQty}>+{c.quantity} {unitLabel}</Text>
+                            </View>
+                            {c.note ? (
+                              <Text style={styles.contribNote}>{c.note}</Text>
+                            ) : null}
+                            <Text style={styles.contribDate}>{formatDateTime(c.createdAt)}</Text>
+                          </View>
+                        ))
+                      )}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            {/* Inline edit form (add or edit need) shown below list */}
+            {showNeedForm && (
+              <View style={styles.inlineForm}>
+                <Text style={styles.inlineFormTitle}>
+                  {editingNeedId ? 'Edit support needs' : 'Add support needs'}
+                </Text>
+                <RequestChoiceGroup
+                  label="Type of support"
+                  options={SUPPORT_TYPES.map((t) => ({ label: t.label, value: t.value }))}
+                  value={needFormSupportType}
+                  onChange={(v) => setNeedFormSupportType(v as SupportType)}
+                />
+                <RequestField
+                  label="Support needs' name"
+                  value={needFormName}
+                  onChangeText={setNeedFormName}
+                  placeholder="E.g.: Rice, Cash..."
+                />
+                <RequestChoiceGroup
+                  label="Unit"
+                  options={SUPPORT_NEED_UNITS.map((u) => ({ label: u.label, value: u.value }))}
+                  value={needFormUnit}
+                  onChange={(v) => setNeedFormUnit(v as SupportNeedUnit)}
+                />
+                <RequestField
+                  label="Number of needs"
+                  keyboardType="decimal-pad"
+                  value={needFormQty}
+                  onChangeText={setNeedFormQty}
+                  placeholder="E.g.: 10"
+                />
+                {needFormError ? (
+                  <Text style={styles.formError}>{needFormError}</Text>
+                ) : null}
+                <View style={styles.formActions}>
+                  <View style={styles.formAction}>
+                    <RequestButton
+                      label={editingNeedId ? 'Save changes' : 'Add'}
+                      onPress={handleSaveNeed}
+                      disabled={isSavingNeed}
+                    />
+                  </View>
+                  <View style={styles.formAction}>
+                    <RequestButton
+                      label="Cancel"
+                      variant="outline"
+                      onPress={cancelNeedForm}
+                      disabled={isSavingNeed}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Add need button — REQUESTER only */}
+            {canManageNeeds && !showNeedForm && (
+              <RequestButton
+                label="+ Add support needs"
+                variant="outline"
+                onPress={openAddNeedForm}
+              />
+            )}
+          </View>
 
         </RequestCard>
       ) : null}
@@ -800,13 +1237,184 @@ const styles = StyleSheet.create({
   assignmentName: {
     color: authPalette.text,
     fontFamily: Fonts.rounded,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: 'bold',
   },
   assignmentMeta: {
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
+    fontSize: 13,
+  },
+  // ── Support Needs ──
+  needsPanelTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  needItem: {
+    borderColor: '#E1EAE4',
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12,
+  },
+  needHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  needInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  needNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  needName: {
+    fontSize: 15,
+    fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
+    color: authPalette.text,
+  },
+  needQtyText: {
+    fontSize: 13,
+    fontFamily: Fonts.rounded,
+    color: authPalette.muted,
+  },
+  needTypeBadge: {
+    backgroundColor: '#EEF7F0',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  needTypeText: {
+    fontSize: 11,
+    fontFamily: Fonts.rounded,
+    color: authPalette.primaryDark,
+    fontWeight: '600',
+  },
+  fulfilledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#D1FAE5',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  fulfilledText: {
+    fontSize: 11,
+    fontFamily: Fonts.rounded,
+    color: '#1A7A4A',
+    fontWeight: '600',
+  },
+  progressTrack: {
+    height: 7,
+    backgroundColor: '#E6EEE8',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 7,
+    borderRadius: 999,
+  },
+  progressLabel: {
     fontSize: 12,
-    marginTop: 3,
+    fontFamily: Fonts.rounded,
+    color: authPalette.muted,
+    textAlign: 'right',
+  },
+  needActions: {
+    gap: 8,
+  },
+  needActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  needActionBtn: {
+    flex: 1,
+  },
+  contribToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  contribToggleText: {
+    fontSize: 13,
+    fontFamily: Fonts.rounded,
+    color: authPalette.primaryDark,
+  },
+  contribList: {
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2EF',
+    paddingTop: 10,
+    gap: 8,
+  },
+  contribItem: {
+    gap: 3,
+  },
+  contribItemTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  contribName: {
+    fontSize: 13,
+    fontFamily: Fonts.rounded,
+    fontWeight: 'bold',
+    color: authPalette.text,
+    flex: 1,
+  },
+  contribQty: {
+    fontSize: 13,
+    fontFamily: Fonts.rounded,
+    color: authPalette.primaryDark,
+    fontWeight: '600',
+  },
+  contribNote: {
+    fontSize: 12,
+    fontFamily: Fonts.rounded,
+    color: authPalette.muted,
+    paddingLeft: 19,
+  },
+  contribDate: {
+    fontSize: 11,
+    fontFamily: Fonts.rounded,
+    color: '#AABDB0',
+    paddingLeft: 19,
+  },
+  inlineForm: {
+    backgroundColor: '#F4FAF6',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D6EADc',
+    padding: 14,
+    gap: 12,
+  },
+  inlineFormTitle: {
+    fontSize: 14,
+    fontFamily: Fonts.rounded,
+    fontWeight: '600',
+    color: authPalette.primaryDark,
+  },
+  formError: {
+    fontSize: 13,
+    fontFamily: Fonts.rounded,
+    color: '#AE3F3A',
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formAction: {
+    flex: 1,
   },
   rejectForm: {
     gap: 12,
