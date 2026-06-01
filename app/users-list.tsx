@@ -105,7 +105,7 @@ export default function UsersListScreen() {
 
   if (!isAdmin && !isAuthLoading) {
     return (
-      <ManagementScreen title="Users" onBackPress={() => router.push('/(tabs)/profile')}>
+      <ManagementScreen title="Users" onBackPress={() => router.push('/(tabs)/system')}>
         <ManagementCard>
           <Text style={styles.restrictedTitle}>Admin only</Text>
           <Text style={styles.restrictedBody}>User management belongs to the admin workspace.</Text>
@@ -117,7 +117,7 @@ export default function UsersListScreen() {
   return (
     <ManagementScreen
       title="Users"
-      onBackPress={() => router.push('/(tabs)/profile')}
+      onBackPress={() => router.push('/(tabs)/system')}
       rightSlot={<ManagementBadge label={user?.role ?? 'ADMIN'} tone="slate" />}>
       <ManagementSection title="Directory">
         <ManagementCard>

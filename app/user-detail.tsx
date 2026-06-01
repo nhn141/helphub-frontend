@@ -79,7 +79,7 @@ export default function UserDetailScreen() {
 
   if (!isAdmin && !isAuthLoading) {
     return (
-      <ManagementScreen title="User Detail" onBackPress={() => router.push('/users-list')}>
+      <ManagementScreen title="User Detail" onBackPress={() => router.push('/(tabs)/system')}>
         <ManagementCard>
           <Text style={styles.restrictedTitle}>Admin only</Text>
           <Text style={styles.restrictedBody}>User management belongs to the admin workspace.</Text>
@@ -91,7 +91,7 @@ export default function UserDetailScreen() {
   return (
     <ManagementScreen
       title="User Detail"
-      onBackPress={() => router.push('/users-list')}
+      onBackPress={() => router.push('/(tabs)/system')}
       rightSlot={
         user ? (
           <ManagementBadge

@@ -13,15 +13,14 @@ import {
   setUnreadNotificationCount,
   upsertMessageNotificationMeta,
   upsertNotificationItem,
-  useUnreadNotificationCount,
 } from '@/components/notification/notification-state';
-import { canManageCategories, canManageSupportLocations } from '@/constants/role-access';
+import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function TabLayout() {
   const { role } = useDemoRole();
   const { session } = useAuth();
-  const unreadNotifications = useUnreadNotificationCount();
+  const supportTabTitle = canManageSupportLocations(role) ? 'Support' : 'Requests';
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -105,53 +104,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="requests"
+        name="support"
         options={{
-          title: 'Requests',
+          title: supportTabTitle,
           tabBarIcon: ({ color }) => <Feather size={20} name="clipboard" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="posts"
+        name="social"
         options={{
-          title: 'Posts',
-          tabBarIcon: ({ color }) => <Feather size={20} name="file-text" color={color} />,
+          title: 'Social',
+          tabBarIcon: ({ color }) => <Feather size={20} name="users" color={color} />,
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="system"
         options={{
-          title: 'Chat',
-          tabBarIcon: ({ color }) => <Feather size={20} name="message-circle" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: 'Notifications',
-          tabBarBadge:
-            unreadNotifications > 0
-              ? unreadNotifications > 99
-                ? '99+'
-                : unreadNotifications
-              : undefined,
-          tabBarIcon: ({ color }) => <Feather size={20} name="bell" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="categories"
-        options={{
-          title: 'Categories',
-          href: canManageCategories(role) ? undefined : null,
-          tabBarIcon: ({ color }) => <Feather size={20} name="grid" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="support-locations"
-        options={{
-          title: 'Locations',
-          href: canManageSupportLocations(role) ? undefined : null,
-          tabBarIcon: ({ color }) => <Feather size={20} name="map-pin" color={color} />,
+          title: 'System',
+          href: role === 'ADMIN' ? undefined : null,
+          tabBarIcon: ({ color }) => <Feather size={20} name="settings" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -159,6 +130,42 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => <Feather size={20} name="user" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="requests"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="posts"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="categories"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="support-locations"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

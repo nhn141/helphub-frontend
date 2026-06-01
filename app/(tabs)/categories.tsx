@@ -11,7 +11,7 @@ import { getCategories, type CategorySummary } from '@/components/management/cat
 import { getRoleTone, type AppRole } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
-export default function CategoriesTabScreen() {
+export function CategoryManagementContent() {
   const { session, user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -42,24 +42,17 @@ export default function CategoriesTabScreen() {
 
   if (!isAdmin) {
     return (
-      <DashboardScreen
-        title="Categories"
-        rightSlot={<Badge label={user?.role ?? 'GUEST'} tone={user?.role ? getRoleTone(user.role as AppRole) : 'slate'} />}>
-        <SurfaceCard>
-          <Text style={styles.restrictedTitle}>Admin only</Text>
-          <Text style={styles.restrictedBody}>
-            Category management belongs to the admin workspace.
-          </Text>
-        </SurfaceCard>
-      </DashboardScreen>
+      <SurfaceCard>
+        <Text style={styles.restrictedTitle}>Admin only</Text>
+        <Text style={styles.restrictedBody}>
+          Category management belongs to the admin workspace.
+        </Text>
+      </SurfaceCard>
     );
   }
 
   return (
-    <DashboardScreen
-      title="Categories"
-      rightSlot={<Badge label={user?.role ?? ''} tone={user?.role ? getRoleTone(user.role as AppRole) : 'slate'} />}>
-
+    <>
       <SectionHeader
         title="Category Directory"
         action={
@@ -105,6 +98,23 @@ export default function CategoriesTabScreen() {
           </SurfaceCard>
         )}
       </View>
+    </>
+  );
+}
+
+export default function CategoriesTabScreen() {
+  const { user } = useAuth();
+
+  return (
+    <DashboardScreen
+      title="Categories"
+      rightSlot={
+        <Badge
+          label={user?.role ?? 'GUEST'}
+          tone={user?.role ? getRoleTone(user.role as AppRole) : 'slate'}
+        />
+      }>
+      <CategoryManagementContent />
     </DashboardScreen>
   );
 }

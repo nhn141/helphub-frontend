@@ -123,7 +123,7 @@ export default function UserStatusScreen() {
 
   if (!isAdmin && !isAuthLoading) {
     return (
-      <ManagementScreen title="Update Status" onBackPress={() => router.push('/users-list')}>
+      <ManagementScreen title="Update Status" onBackPress={() => router.push('/(tabs)/system')}>
         <ManagementCard>
           <Text style={styles.restrictedTitle}>Admin only</Text>
           <Text style={styles.restrictedBody}>User management belongs to the admin workspace.</Text>

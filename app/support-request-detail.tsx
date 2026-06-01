@@ -134,7 +134,7 @@ export default function SupportRequestDetailScreen() {
       user?.role === 'COLLABORATOR'
     );
 
-  const backTarget = from === 'my' ? '/support-request-my' : '/(tabs)/requests';
+  const backTarget = from === 'my' ? '/support-request-my' : '/(tabs)/support';
 
   const loadRequestDetail = useCallback(async () => {
     if (!session?.accessToken) {
@@ -322,8 +322,8 @@ export default function SupportRequestDetailScreen() {
 
   const handleOpenConversation = (conversationId: string) => {
     router.push({
-      pathname: '/(tabs)/chat',
-      params: { conversationId },
+      pathname: '/(tabs)/social',
+      params: { conversationId, view: 'chat' },
     });
   };
 
@@ -777,7 +777,7 @@ export default function SupportRequestDetailScreen() {
             <View style={styles.assignmentPanelHeader}>
               <View style={styles.needsPanelTitle}>
                 <Feather name="package" size={16} color={authPalette.primaryDark} />
-                <Text style={styles.assignmentTitle}>support needs</Text>
+                <Text style={styles.assignmentTitle}>Support needs</Text>
               </View>
               <Text style={styles.assignmentCount}>{supportNeeds.length}</Text>
             </View>
@@ -932,7 +932,7 @@ export default function SupportRequestDetailScreen() {
                     <View style={styles.contribList}>
                       {(contributions[need.id] ?? []).length === 0 ? (
                         <Text style={styles.assignmentText}>No donations.</Text>
-                      ) : (s
+                      ) : (
                         (contributions[need.id] ?? []).map((c) => (
                           <View key={c.id} style={styles.contribItem}>
                             <View style={styles.contribItemTop}>

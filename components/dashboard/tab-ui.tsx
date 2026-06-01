@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { authPalette } from '@/components/auth/auth-ui';
+import { NotificationBell } from '@/components/notification/notification-menu';
 import { Fonts } from '@/constants/theme';
 
 type DashboardScreenProps = {
@@ -64,7 +65,10 @@ export function DashboardScreen({
             </View>
             {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           </View>
-          {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
+          <View style={styles.headerActions}>
+            {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
+            <NotificationBell />
+          </View>
         </View>
         {children}
       </ScrollView>
@@ -159,6 +163,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: 16,
+    zIndex: 20,
   },
   headerText: {
     flex: 1,
@@ -191,8 +196,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFD4C7',
     opacity: 0.72,
   },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    marginLeft: 4,
+    zIndex: 30,
+  },
   rightSlot: {
     alignItems: 'flex-end',
+    maxWidth: 148,
   },
   title: {
     fontSize: 30,

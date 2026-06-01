@@ -11,6 +11,7 @@ import {
   StatCard,
   SurfaceCard,
 } from '@/components/dashboard/tab-ui';
+import { SectionTabs } from '@/components/dashboard/section-tabs';
 import { authPalette } from '@/components/auth/auth-ui';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -22,7 +23,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestSummary,
 } from '@/components/support-request/request-api';
-import { canCreateRequests, getRoleTone } from '@/constants/role-access';
+import { canCreateRequests, canManageSupportLocations, getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 const statusFilters: { label: string; value?: SupportRequestStatus }[] = [
@@ -41,6 +42,7 @@ export default function RequestsTabScreen() {
   const { session, isAuthenticated } = useAuth();
   const { role } = useDemoRole();
   const showRequesterActions = canCreateRequests(role);
+  const showSupportTabs = canManageSupportLocations(role);
   const [requests, setRequests] = useState<SupportRequestSummary[]>([]);
   const [activeStatus, setActiveStatus] = useState<SupportRequestStatus | undefined>();
   const [error, setError] = useState('');
@@ -82,8 +84,26 @@ export default function RequestsTabScreen() {
 
   return (
     <DashboardScreen
-      title="Support Requests"
+      title={showSupportTabs ? 'Support' : 'Support Requests'}
       rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+      {showSupportTabs ? (
+        <SectionTabs
+          items={[
+            {
+              active: true,
+              icon: 'clipboard',
+              label: 'Requests',
+              onPress: () => router.push({ pathname: '/(tabs)/support', params: { view: 'requests' } }),
+            },
+            {
+              icon: 'map-pin',
+              label: 'Locations',
+              onPress: () => router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } }),
+            },
+          ]}
+        />
+      ) : null}
+
       {showRequesterActions ? (
         <View>
           <SectionHeader title="My Requests" />

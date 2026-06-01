@@ -68,7 +68,9 @@ export default function SupportLocationDetailScreen() {
   return (
     <ManagementScreen
       title="Support Location"
-      onBackPress={() => router.push('/(tabs)/support-locations')}
+      onBackPress={() =>
+        router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } })
+      }
       rightSlot={
         location ? (
           <ManagementBadge

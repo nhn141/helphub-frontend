@@ -187,7 +187,7 @@ export default function PostDetailScreen() {
 
   if (loading) {
     return (
-      <PostScreen title="Post Detail" onBackPress={() => router.push('/(tabs)/posts')}>
+      <PostScreen title="Post Detail" onBackPress={() => router.push('/(tabs)/social')}>
         <PostLoading message="Loading post…" />
       </PostScreen>
     );
@@ -195,7 +195,7 @@ export default function PostDetailScreen() {
 
   if (error || !post) {
     return (
-      <PostScreen title="Post Detail" onBackPress={() => router.push('/(tabs)/posts')}>
+      <PostScreen title="Post Detail" onBackPress={() => router.push('/(tabs)/social')}>
         <PostError message={error ?? 'Post not found.'} onRetry={fetchPost} />
       </PostScreen>
     );
@@ -207,7 +207,7 @@ export default function PostDetailScreen() {
   return (
     <PostScreen
       title="Post"
-      onBackPress={() => router.push('/(tabs)/posts')}
+      onBackPress={() => router.push('/(tabs)/social')}
       rightSlot={<PostStatusBadge status={post.status} />}>
       
       <PostCard>

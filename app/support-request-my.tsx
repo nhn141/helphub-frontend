@@ -65,7 +65,7 @@ export default function SupportRequestMyScreen() {
   );
 
   return (
-    <RequestScreen title="My Requests" onBackPress={() => router.push('/(tabs)/requests')}>
+    <RequestScreen title="My Requests" onBackPress={() => router.push('/(tabs)/support')}>
       <RequestSection title="Filters">
         <View style={styles.filterRow}>
           {filters.map((item) => {

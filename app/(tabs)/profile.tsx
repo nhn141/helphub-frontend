@@ -84,7 +84,12 @@ export default function ProfileTabScreen() {
         {canManageUsers(role) ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push('/users-list')}
+            onPress={() =>
+              router.push({
+                pathname: '/(tabs)/system',
+                params: { section: 'manage-user', view: 'users' },
+              })
+            }
             style={styles.adminButton}>
             <Feather name="users" size={16} color="#fff" />
             <Text style={styles.adminButtonText}>Manage users</Text>

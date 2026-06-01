@@ -105,7 +105,7 @@ export default function SupportRequestCreateScreen() {
   }
 
   return (
-    <RequestScreen title="Create Request" onBackPress={() => router.push('/(tabs)/requests')}>
+    <RequestScreen title="Create Request" onBackPress={() => router.push('/(tabs)/support')}>
       <RequestSection title="Request Details">
         <RequestField
           label="Title"

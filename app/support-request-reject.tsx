@@ -41,7 +41,7 @@ export default function SupportRequestRejectScreen() {
         pathname: '/support-request-detail' as const,
         params: { id },
       } as const)
-    : ('/(tabs)/requests' as const);
+    : ('/(tabs)/support' as const);
 
   const loadRequestDetail = useCallback(async () => {
     if (!session?.accessToken || !id) {

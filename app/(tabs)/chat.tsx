@@ -40,7 +40,12 @@ import {
   type PickedImage,
 } from '@/components/media/media-api';
 import { OpenableImage } from '@/components/media/image-viewer';
+import { Badge } from '@/components/dashboard/tab-ui';
+import { SectionTabs } from '@/components/dashboard/section-tabs';
+import { useDemoRole } from '@/components/demo-role/demo-role-provider';
+import { NotificationBell } from '@/components/notification/notification-menu';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -125,6 +130,7 @@ export default function ChatTabScreen() {
   const requestedConversationId = getStringParam(params.conversationId);
   const { width } = useWindowDimensions();
   const { isAuthenticated, session, user } = useAuth();
+  const { role } = useDemoRole();
   const isWide = width >= 760;
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -674,7 +680,7 @@ export default function ChatTabScreen() {
         style={styles.keyboard}>
         <View style={styles.header}>
           <View style={styles.headerCopy}>
-            <Text style={styles.title}>Chat</Text>
+            <Text style={styles.title}>Social</Text>
             <View style={styles.statusRow}>
               <View
                 style={[
@@ -692,10 +698,30 @@ export default function ChatTabScreen() {
               </Text>
             </View>
           </View>
-          <Pressable accessibilityRole="button" onPress={() => fetchChatData()} style={styles.iconButton}>
-            <Feather name="refresh-cw" size={19} color={authPalette.primaryDark} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" onPress={() => fetchChatData()} style={styles.iconButton}>
+              <Feather name="refresh-cw" size={19} color={authPalette.primaryDark} />
+            </Pressable>
+            <Badge label={role} tone={getRoleTone(role)} />
+            <NotificationBell />
+          </View>
         </View>
+
+        <SectionTabs
+          items={[
+            {
+              icon: 'file-text',
+              label: 'Posts',
+              onPress: () => router.push({ pathname: '/(tabs)/social', params: { view: 'posts' } }),
+            },
+            {
+              active: true,
+              icon: 'message-circle',
+              label: 'Chat',
+              onPress: () => router.push({ pathname: '/(tabs)/social', params: { view: 'chat' } }),
+            },
+          ]}
+        />
 
         {error ? (
           <View style={styles.errorBanner}>
@@ -1070,6 +1096,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+    zIndex: 20,
   },
   headerCopy: {
     flex: 1,
@@ -1102,6 +1129,13 @@ const styles = StyleSheet.create({
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
     fontSize: 13,
+  },
+  headerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
+    zIndex: 30,
   },
   iconButton: {
     alignItems: 'center',

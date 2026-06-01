@@ -7,6 +7,7 @@ import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Badge, DashboardScreen, FilterChip, SectionHeader, StatCard, SurfaceCard } from '@/components/dashboard/tab-ui';
+import { SectionTabs } from '@/components/dashboard/section-tabs';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import {
   formatCoordinate,
@@ -109,8 +110,24 @@ export default function SupportLocationsTabScreen() {
 
   return (
     <DashboardScreen
-      title="Support Locations"
+      title="Support"
       rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+      <SectionTabs
+        items={[
+          {
+            icon: 'clipboard',
+            label: 'Requests',
+            onPress: () => router.push({ pathname: '/(tabs)/support', params: { view: 'requests' } }),
+          },
+          {
+            active: true,
+            icon: 'map-pin',
+            label: 'Locations',
+            onPress: () => router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } }),
+          },
+        ]}
+      />
+
       {!isAuthenticated ? (
         <SurfaceCard>
           <Text style={styles.emptyTitle}>Login required</Text>

@@ -66,7 +66,7 @@ export default function PostMyScreen() {
   })();
 
   return (
-    <PostScreen title="My Posts" onBackPress={() => router.push('/(tabs)/posts')}>
+    <PostScreen title="My Posts" onBackPress={() => router.push('/(tabs)/social')}>
       <PostSection title="Filters">
         <View style={styles.filterRow}>
           {filters.map((item) => (

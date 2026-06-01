@@ -79,7 +79,9 @@ export default function SupportLocationCreateScreen() {
   return (
     <ManagementScreen
       title="Create Location"
-      onBackPress={() => router.push('/(tabs)/support-locations')}>
+      onBackPress={() =>
+        router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } })
+      }>
       <ManagementSection title="Location Info">
         <ManagementField label="Name" onChangeText={setName} value={name} />
         <ManagementField
@@ -130,7 +132,9 @@ export default function SupportLocationCreateScreen() {
         <ManagementButton
           disabled={isSubmitting}
           label="Back to Locations"
-          onPress={() => router.push('/(tabs)/support-locations')}
+          onPress={() =>
+            router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } })
+          }
           variant="outline"
         />
       </View>

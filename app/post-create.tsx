@@ -141,7 +141,7 @@ export default function PostCreateScreen() {
   };
 
   return (
-    <PostScreen title="Create Post" onBackPress={() => router.push('/(tabs)/posts')}>
+    <PostScreen title="Create Post" onBackPress={() => router.push('/(tabs)/social')}>
       <PostCard>
         <View style={styles.composerHeader}>
           <Text style={styles.composerTitle}>Create Post</Text>
@@ -249,7 +249,7 @@ export default function PostCreateScreen() {
         />
         <PostButton
           label="Cancel"
-          onPress={() => router.push('/(tabs)/posts')}
+          onPress={() => router.push('/(tabs)/social')}
           variant="outline"
         />
       </View>

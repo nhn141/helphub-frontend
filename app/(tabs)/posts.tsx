@@ -7,6 +7,7 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { Badge, DashboardScreen } from '@/components/dashboard/tab-ui';
+import { SectionTabs } from '@/components/dashboard/section-tabs';
 import { canViewVolunteerPosts, getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 import { OpenableImage } from '@/components/media/image-viewer';
@@ -236,8 +237,23 @@ export default function PostsTabScreen() {
 
   return (
     <DashboardScreen
-      title="Feed"
+      title="Social"
       rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+      <SectionTabs
+        items={[
+          {
+            active: true,
+            icon: 'file-text',
+            label: 'Posts',
+            onPress: () => router.push({ pathname: '/(tabs)/social', params: { view: 'posts' } }),
+          },
+          {
+            icon: 'message-circle',
+            label: 'Chat',
+            onPress: () => router.push({ pathname: '/(tabs)/social', params: { view: 'chat' } }),
+          },
+        ]}
+      />
 
       {/* Create Post Composer Trigger */}
       <Pressable
