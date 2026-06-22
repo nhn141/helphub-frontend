@@ -185,6 +185,32 @@ export default function PostDetailScreen() {
     router.push(`/post-edit?id=${post?.id}`);
   };
 
+  const handleReportPost = () => {
+    if (!post) return;
+
+    router.push({
+      pathname: '/report-create' as never,
+      params: {
+        targetId: post.id,
+        targetName: post.content.slice(0, 80),
+        targetType: 'POST',
+      },
+    });
+  };
+
+  const handleReportAuthor = () => {
+    if (!post) return;
+
+    router.push({
+      pathname: '/report-create' as never,
+      params: {
+        targetId: post.authorId,
+        targetName: post.authorName,
+        targetType: 'USER',
+      },
+    });
+  };
+
   if (loading) {
     return (
       <PostScreen title="Post Detail" onBackPress={() => router.push('/(tabs)/social')}>
@@ -267,6 +293,25 @@ export default function PostDetailScreen() {
           </Pressable>
         ) : null}
         <Text style={styles.content}>{post.content}</Text>
+
+        {!isOwner && post.isActive ? (
+          <View style={styles.reportActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleReportPost}
+              style={styles.reportButton}>
+              <Feather name="flag" size={14} color="#AE3F3A" />
+              <Text style={styles.reportButtonText}>Report post</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleReportAuthor}
+              style={styles.reportButton}>
+              <Feather name="user-x" size={14} color="#AE3F3A" />
+              <Text style={styles.reportButtonText}>Report author</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Media */}
         {media.length > 0 ? (
@@ -407,6 +452,27 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: authPalette.text,
     fontFamily: Fonts.rounded,
+  },
+  reportActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 14,
+  },
+  reportButton: {
+    alignItems: 'center',
+    borderColor: '#F2C5C2',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 11,
+  },
+  reportButtonText: {
+    color: '#AE3F3A',
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
   },
   mediaWrap: {
     marginTop: 16,

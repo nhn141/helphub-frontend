@@ -26,6 +26,7 @@ import {
   type VolunteerAssignmentStatus,
 } from '@/components/support-request/request-api';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { ReportAdminContent } from '@/components/report/report-admin-content';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
@@ -670,13 +671,7 @@ export default function SystemTabScreen() {
       ) : null}
 
       {activeSection === 'report' ? (
-        <SurfaceCard>
-          <View style={styles.emptyState}>
-            <Feather name="flag" size={34} color="#AEBAB0" />
-            <Text style={styles.emptyTitle}>Report</Text>
-            <Text style={styles.emptyText}>This workspace is intentionally empty for now.</Text>
-          </View>
-        </SurfaceCard>
+        <ReportAdminContent />
       ) : null}
 
       {activeSection === 'category' ? <CategoryManagementContent /> : null}

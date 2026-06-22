@@ -282,6 +282,11 @@ export function extractSupportRequestId(actionUrl: string | null | undefined) {
   return match?.[1] ?? null;
 }
 
+export function extractReportId(actionUrl: string | null | undefined) {
+  const match = actionUrl?.match(/\/reports\/([0-9a-f-]{36})/i);
+  return match?.[1] ?? null;
+}
+
 export function connectChatRealtime(
   accessToken: string,
   handlers: RealtimeHandlers,

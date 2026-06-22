@@ -72,13 +72,22 @@ export default function ProfileTabScreen() {
         </View>
 
         {isAuthenticated ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/profile-edit')}
-            style={styles.profileButton}>
-            <Feather name="edit-2" size={16} color={authPalette.primaryDark} />
-            <Text style={styles.profileButtonText}>Edit profile</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/profile-edit')}
+              style={styles.profileButton}>
+              <Feather name="edit-2" size={16} color={authPalette.primaryDark} />
+              <Text style={styles.profileButtonText}>Edit profile</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/reports-my' as never)}
+              style={styles.secondaryButton}>
+              <Feather name="flag" size={16} color={authPalette.primaryDark} />
+              <Text style={styles.profileButtonText}>My reports</Text>
+            </Pressable>
+          </>
         ) : null}
 
         {canManageUsers(role) ? (
@@ -184,6 +193,17 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 22,
     backgroundColor: authPalette.primaryDark,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  secondaryButton: {
+    marginTop: 12,
+    minHeight: 44,
+    borderRadius: 22,
+    borderWidth: 1.4,
+    borderColor: authPalette.outline,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

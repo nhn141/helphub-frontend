@@ -48,6 +48,9 @@ export default function RootLayout() {
             <Stack.Screen name="user-detail" />
             <Stack.Screen name="user-role" />
             <Stack.Screen name="user-status" />
+            <Stack.Screen name="report-create" />
+            <Stack.Screen name="reports-my" />
+            <Stack.Screen name="report-detail" />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>

@@ -14,6 +14,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
 import {
   extractConversationId,
+  extractReportId,
   extractSupportRequestId,
   formatChatDateTime,
   getConversationMessages,
@@ -44,6 +45,7 @@ type DisplayNotification = {
   isMessage: boolean;
   isRead: boolean;
   notifications: NotificationItem[];
+  reportId: string | null;
   supportRequestId: string | null;
 };
 
@@ -98,6 +100,7 @@ function buildDisplayNotifications(
       isMessage: false,
       isRead: notification.isRead,
       notifications: [notification],
+      reportId: extractReportId(notification.actionUrl),
       supportRequestId: extractSupportRequestId(notification.actionUrl),
     });
   });
@@ -122,6 +125,7 @@ function buildDisplayNotifications(
       isMessage: true,
       isRead: unreadCount === 0,
       notifications: group,
+      reportId: null,
       supportRequestId: null,
     });
   });
@@ -343,6 +347,14 @@ export function NotificationBell() {
         pathname: '/support-request-detail',
         params: { id: displayNotification.supportRequestId },
       });
+      return;
+    }
+
+    if (displayNotification.reportId) {
+      router.push({
+        pathname: '/report-detail' as never,
+        params: { id: displayNotification.reportId },
+      });
     }
   }
 
@@ -457,7 +469,13 @@ export function NotificationBell() {
                     ]}>
                     <View style={styles.notificationIcon}>
                       <Feather
-                        name={notification.isMessage ? 'message-circle' : 'bell'}
+                        name={
+                          notification.isMessage
+                            ? 'message-circle'
+                            : notification.reportId
+                              ? 'flag'
+                              : 'bell'
+                        }
                         size={16}
                         color={authPalette.primaryDark}
                       />

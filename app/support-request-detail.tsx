@@ -231,6 +231,32 @@ export default function SupportRequestDetailScreen() {
     });
   };
 
+  const handleReportRequest = () => {
+    if (!requestDetail) return;
+
+    router.push({
+      pathname: '/report-create' as never,
+      params: {
+        targetId: requestDetail.id,
+        targetName: requestDetail.title,
+        targetType: 'SUPPORT_REQUEST',
+      },
+    });
+  };
+
+  const handleReportRequester = () => {
+    if (!requestDetail) return;
+
+    router.push({
+      pathname: '/report-create' as never,
+      params: {
+        targetId: requestDetail.requesterId,
+        targetName: requestDetail.requesterName,
+        targetType: 'USER',
+      },
+    });
+  };
+
   const handleApplyAsVolunteer = async () => {
     if (!session?.accessToken || !id) return;
 
@@ -549,6 +575,27 @@ export default function SupportRequestDetailScreen() {
               </View>
             )}
           </View>
+
+          {user?.id !== requestDetail.requesterId &&
+          requestDetail.status !== 'REJECTED' &&
+          requestDetail.status !== 'CANCELLED' ? (
+            <View style={styles.reportActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleReportRequest}
+                style={styles.reportButton}>
+                <Feather name="flag" size={14} color="#AE3F3A" />
+                <Text style={styles.reportButtonText}>Report request</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleReportRequester}
+                style={styles.reportButton}>
+                <Feather name="user-x" size={14} color="#AE3F3A" />
+                <Text style={styles.reportButtonText}>Report requester</Text>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* Rejection Reason */}
           {requestDetail.rejectionReason && (
@@ -1098,6 +1145,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 12,
     marginBottom: 16,
+  },
+  reportActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  reportButton: {
+    alignItems: 'center',
+    borderColor: '#F2C5C2',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 11,
+  },
+  reportButtonText: {
+    color: '#AE3F3A',
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
   },
   infoRow: {
     flexDirection: 'row',

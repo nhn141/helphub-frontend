@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import {
   connectChatRealtime,
   extractConversationId,
+  extractReportId,
   extractSupportRequestId,
   formatChatDateTime,
   getConversationMessages,
@@ -42,6 +43,7 @@ type DisplayNotification = {
   isMessage: boolean;
   isRead: boolean;
   conversationId: string | null;
+  reportId: string | null;
   supportRequestId: string | null;
 };
 
@@ -96,6 +98,7 @@ function buildDisplayNotifications(
       isMessage: false,
       isRead: notification.isRead,
       conversationId: null,
+      reportId: extractReportId(notification.actionUrl),
       supportRequestId: extractSupportRequestId(notification.actionUrl),
     });
   });
@@ -120,6 +123,7 @@ function buildDisplayNotifications(
       isMessage: true,
       isRead: unreadCount === 0,
       conversationId: extractConversationId(latestNotification.actionUrl),
+      reportId: null,
       supportRequestId: null,
     });
   });
@@ -376,6 +380,14 @@ export default function NotificationsTabScreen() {
         pathname: '/support-request-detail',
         params: { id: displayNotification.supportRequestId },
       });
+      return;
+    }
+
+    if (displayNotification.reportId) {
+      router.push({
+        pathname: '/report-detail' as never,
+        params: { id: displayNotification.reportId },
+      });
     }
   }
 
@@ -473,7 +485,13 @@ export default function NotificationsTabScreen() {
               ]}>
               <View style={styles.notificationIcon}>
                 <Feather
-                  name={notification.isMessage ? 'message-circle' : 'bell'}
+                  name={
+                    notification.isMessage
+                      ? 'message-circle'
+                      : notification.reportId
+                        ? 'flag'
+                        : 'bell'
+                  }
                   size={17}
                   color={authPalette.primaryDark}
                 />
