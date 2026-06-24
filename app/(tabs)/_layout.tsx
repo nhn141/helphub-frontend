@@ -111,10 +111,24 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="map"
+        options={{
+          title: 'Map',
+          tabBarIcon: ({ color }) => <Feather size={20} name="map" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="social"
         options={{
           title: 'Social',
           tabBarIcon: ({ color }) => <Feather size={20} name="users" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="funds"
+        options={{
+          title: 'Funds',
+          tabBarIcon: ({ color }) => <Feather size={20} name="dollar-sign" color={color} />,
         }}
       />
       <Tabs.Screen

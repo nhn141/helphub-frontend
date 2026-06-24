@@ -58,9 +58,13 @@ export function ManagementScreen({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" onPress={onBackPress} style={styles.backButton}>
-            <Feather name="arrow-left" size={22} color={authPalette.primaryDark} />
-          </Pressable>
+          {onBackPress ? (
+            <Pressable accessibilityRole="button" onPress={onBackPress} style={styles.backButton}>
+              <Feather name="arrow-left" size={22} color={authPalette.primaryDark} />
+            </Pressable>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
           <View style={styles.headerTitleStage}>
             <View style={styles.headerTitleGlowMint} />
             <View style={styles.headerTitleGlowCoral} />

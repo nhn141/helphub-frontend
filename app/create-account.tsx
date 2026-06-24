@@ -39,7 +39,7 @@ export default function CreateAccountScreen() {
 
   async function handleCreateAccount() {
     const normalizedFullName = fullName.trim();
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
     const normalizedPhone = phone.trim();
 
     if (!normalizedFullName || !normalizedEmail || !password || !confirmPassword) {
@@ -66,14 +66,21 @@ export default function CreateAccountScreen() {
     setIsSubmitting(true);
 
     try {
-      await register({
+      const response = await register({
         fullName: normalizedFullName,
         email: normalizedEmail,
         password,
         phone: normalizedPhone || undefined,
         role,
       });
-      router.replace('/(tabs)');
+      router.replace({
+        pathname: '/verify-code',
+        params: {
+          email: normalizedEmail,
+          notice: response.message,
+          purpose: 'email-verification',
+        },
+      });
     } catch (registerError) {
       setError(getAuthErrorMessage(registerError));
     } finally {

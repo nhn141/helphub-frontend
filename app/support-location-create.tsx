@@ -11,15 +11,16 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { LocationPicker } from '@/components/map/location-picker';
+import type { Coordinates } from '@/components/map/map-utils';
 import { Fonts } from '@/constants/theme';
 
 export default function SupportLocationCreateScreen() {
   const { session } = useAuth();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedCoordinate, setSelectedCoordinate] = useState<Coordinates | null>(null);
   const [contactPhone, setContactPhone] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -32,21 +33,13 @@ export default function SupportLocationCreateScreen() {
       return;
     }
 
-    const parsedLatitude = Number(latitude);
-    const parsedLongitude = Number(longitude);
-
     if (!name.trim() || !description.trim() || !address.trim()) {
       setError('Name, description, and address are required.');
       return;
     }
 
-    if (!Number.isFinite(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
-      setError('Latitude must be a number between -90 and 90.');
-      return;
-    }
-
-    if (!Number.isFinite(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
-      setError('Longitude must be a number between -180 and 180.');
+    if (!selectedCoordinate) {
+      setError('Search the address or choose a point on the map before creating.');
       return;
     }
 
@@ -60,8 +53,8 @@ export default function SupportLocationCreateScreen() {
         bankName,
         contactPhone,
         description: description.trim(),
-        latitude: parsedLatitude,
-        longitude: parsedLongitude,
+        latitude: selectedCoordinate.latitude,
+        longitude: selectedCoordinate.longitude,
         name: name.trim(),
       });
 
@@ -91,27 +84,13 @@ export default function SupportLocationCreateScreen() {
           onChangeText={setDescription}
           value={description}
         />
-        <ManagementField label="Address" onChangeText={setAddress} value={address} />
-        <View style={styles.coordinateRow}>
-          <View style={styles.coordinateField}>
-            <ManagementField
-              keyboardType="decimal-pad"
-              label="Latitude"
-              onChangeText={setLatitude}
-              placeholder="10.76262"
-              value={latitude}
-            />
-          </View>
-          <View style={styles.coordinateField}>
-            <ManagementField
-              keyboardType="decimal-pad"
-              label="Longitude"
-              onChangeText={setLongitude}
-              placeholder="106.66017"
-              value={longitude}
-            />
-          </View>
-        </View>
+        <LocationPicker
+          address={address}
+          coordinate={selectedCoordinate}
+          helperText="Search the address and confirm the support location pin before saving."
+          onAddressChange={setAddress}
+          onCoordinateChange={setSelectedCoordinate}
+        />
         <ManagementField label="Contact Phone" onChangeText={setContactPhone} value={contactPhone} />
         <ManagementField label="Bank Name" onChangeText={setBankName} value={bankName} />
         <ManagementField
@@ -143,13 +122,6 @@ export default function SupportLocationCreateScreen() {
 }
 
 const styles = StyleSheet.create({
-  coordinateRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  coordinateField: {
-    flex: 1,
-  },
   buttonStack: {
     gap: 12,
   },

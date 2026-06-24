@@ -239,6 +239,10 @@ export default function PostDetailScreen() {
       <PostCard>
         {/* Post Header */}
         <View style={styles.postHeader}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push({ pathname: '/user-detail', params: { id: post.authorId } })}
+            style={styles.authorProfileLink}>
           <UserAvatar
             name={post.authorName}
             size={44}
@@ -259,6 +263,7 @@ export default function PostDetailScreen() {
               <Text style={styles.metaText}>{isPublic ? 'Public' : 'Volunteers'}</Text>
             </View>
           </View>
+          </Pressable>
           
           {isOwner ? (
             <View style={styles.ownerActions}>
@@ -377,6 +382,12 @@ export default function PostDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  authorProfileLink: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+  },
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',

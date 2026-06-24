@@ -10,6 +10,7 @@ import {
   type AuthSession,
   type LoginPayload,
   type RegisterPayload,
+  type RegisterResponse,
   type UpdateProfilePayload,
   type UserProfile,
 } from '@/components/auth/auth-api';
@@ -25,7 +26,7 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<RegisterResponse>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<AuthSession | null>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<UserProfile>;
@@ -120,10 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (payload: RegisterPayload) => {
-      const nextSession = await registerRequest(payload);
-      await commitAuthSession(nextSession);
+      return registerRequest(payload);
     },
-    [commitAuthSession]
+    []
   );
 
   const logout = useCallback(async () => {

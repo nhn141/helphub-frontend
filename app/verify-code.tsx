@@ -5,6 +5,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  forgotPassword,
+  getAuthErrorMessage,
+  resendEmailOtp,
+  verifyEmail,
+} from '@/components/auth/auth-api';
+import {
   AuthBrandHeader,
   AuthButton,
   AuthCodeRow,
@@ -16,7 +22,7 @@ import {
 } from '@/components/auth/auth-ui';
 import { Fonts } from '@/constants/theme';
 
-const DEMO_RESET_CODE = '424242';
+type OtpPurpose = 'email-verification' | 'password-reset';
 
 function getStringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -25,38 +31,81 @@ function getStringParam(value: string | string[] | undefined) {
 export default function VerifyCodeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const email = getStringParam(params.email);
+  const email = getStringParam(params.email)?.trim().toLowerCase() ?? '';
+  const purpose: OtpPurpose =
+    getStringParam(params.purpose) === 'email-verification'
+      ? 'email-verification'
+      : 'password-reset';
+  const initialNotice = getStringParam(params.notice) ?? '';
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState(initialNotice);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const isEmailVerification = purpose === 'email-verification';
 
   function handleCodeChange(value: string) {
     setCode(value.replace(/\D/g, '').slice(0, 6));
     setError('');
-    setNotice('');
   }
 
-  function handleVerify() {
+  async function handleVerify() {
+    if (!email) {
+      setError('Email address is missing. Please restart this flow.');
+      return;
+    }
+
     if (code.length !== 6) {
       setError('Please enter the 6-digit verification code.');
       return;
     }
 
-    if (code !== DEMO_RESET_CODE) {
-      setError('Invalid verification code. For this demo, use 424242.');
+    setError('');
+    setNotice('');
+    setIsSubmitting(true);
+
+    try {
+      if (isEmailVerification) {
+        const response = await verifyEmail({ email, otp: code });
+        router.replace({
+          pathname: '/login',
+          params: { email, notice: response.message },
+        });
+      } else {
+        router.push({
+          pathname: '/reset-password',
+          params: { email, otp: code },
+        });
+      }
+    } catch (verifyError) {
+      setError(getAuthErrorMessage(verifyError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendCode() {
+    if (!email || isResending) {
+      if (!email) {
+        setError('Email address is missing. Please restart this flow.');
+      }
       return;
     }
 
     setError('');
-    router.push({
-      pathname: '/reset-password',
-      params: { email: email ?? '', code },
-    });
-  }
+    setNotice('');
+    setIsResending(true);
 
-  function handleResendCode() {
-    setError('');
-    setNotice('A fresh demo code is ready: 424242.');
+    try {
+      const response = isEmailVerification
+        ? await resendEmailOtp({ email })
+        : await forgotPassword({ email });
+      setNotice(response.message);
+    } catch (resendError) {
+      setError(getAuthErrorMessage(resendError));
+    } finally {
+      setIsResending(false);
+    }
   }
 
   return (
@@ -66,11 +115,11 @@ export default function VerifyCodeScreen() {
         <AuthIntro
           centered
           compact
-          title="Verify Code"
+          title={isEmailVerification ? 'Verify Email' : 'Enter Reset Code'}
           subtitle={
             email
-              ? `Enter the 6-digit code for ${email}.`
-              : 'Enter the 6-digit code from your password reset request.'
+              ? `Enter the 6-digit code sent to ${email}. The code expires after 5 minutes.`
+              : 'Enter the 6-digit code sent to your email.'
           }
         />
 
@@ -82,7 +131,7 @@ export default function VerifyCodeScreen() {
             label="Verification Code"
             maxLength={6}
             onChangeText={handleCodeChange}
-            placeholder="424242"
+            placeholder="123456"
             textContentType="oneTimeCode"
             value={code}
           />
@@ -92,24 +141,40 @@ export default function VerifyCodeScreen() {
         {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
 
         <View style={styles.resendWrap}>
-          <Text style={styles.resendTimer}>Resend code in 00:45</Text>
-          <Pressable accessibilityRole="button" onPress={handleResendCode}>
-            <Text style={styles.resendLink}>Resend Code</Text>
+          <Text style={styles.resendPrompt}>Didn&apos;t receive the code?</Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isResending}
+            onPress={handleResendCode}>
+            <Text style={[styles.resendLink, isResending && styles.disabledText]}>
+              {isResending ? 'Sending...' : 'Resend Code'}
+            </Text>
           </Pressable>
         </View>
 
         <View style={styles.buttonWrap}>
           <AuthButton
-            label="Verify"
+            disabled={isSubmitting}
+            label={
+              isSubmitting
+                ? isEmailVerification
+                  ? 'Verifying...'
+                  : 'Continuing...'
+                : isEmailVerification
+                  ? 'Verify Email'
+                  : 'Continue'
+            }
             onPress={handleVerify}
             rightIcon={<Feather name="arrow-right" size={20} color="#FFFFFF" />}
           />
         </View>
 
         <AuthTextLink
-          label="Back"
+          label={isEmailVerification ? 'Back to Login' : 'Back to Forgot Password'}
           leftIcon={<Feather name="arrow-left" size={18} color={authPalette.muted} />}
-          onPress={() => router.push('/forgot-password')}
+          onPress={() =>
+            router.push(isEmailVerification ? ('/login' as never) : ('/forgot-password' as never))
+          }
         />
       </AuthPage>
     </SafeAreaView>
@@ -117,43 +182,13 @@ export default function VerifyCodeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: authPalette.background,
-  },
-  inputWrap: {
-    marginTop: 22,
-  },
-  errorText: {
-    marginTop: -4,
-    color: '#B42318',
-    fontSize: 13,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  noticeText: {
-    marginTop: -4,
-    color: authPalette.primaryDark,
-    fontSize: 13,
-    fontFamily: Fonts.rounded,
-    textAlign: 'center',
-  },
-  resendWrap: {
-    marginTop: 30,
-    alignItems: 'center',
-    gap: 10,
-  },
-  resendTimer: {
-    fontSize: 15,
-    color: authPalette.muted,
-    fontFamily: Fonts.rounded,
-  },
-  resendLink: {
-    fontSize: 15,
-    color: authPalette.primaryDark,
-    fontFamily: Fonts.rounded,
-  },
-  buttonWrap: {
-    marginTop: 54,
-  },
+  buttonWrap: { marginTop: 48 },
+  disabledText: { opacity: 0.58 },
+  errorText: { color: '#B42318', fontFamily: Fonts.rounded, fontSize: 13, marginTop: -4, textAlign: 'center' },
+  inputWrap: { marginTop: 22 },
+  noticeText: { color: authPalette.primaryDark, fontFamily: Fonts.rounded, fontSize: 13, lineHeight: 19, marginTop: -4, textAlign: 'center' },
+  resendLink: { color: authPalette.primaryDark, fontFamily: Fonts.rounded, fontSize: 15 },
+  resendPrompt: { color: authPalette.muted, fontFamily: Fonts.rounded, fontSize: 15 },
+  resendWrap: { alignItems: 'center', gap: 10, marginTop: 28 },
+  safeArea: { backgroundColor: authPalette.background, flex: 1 },
 });

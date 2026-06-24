@@ -6,6 +6,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
+import { LocationPicker } from '@/components/map/location-picker';
+import type { Coordinates } from '@/components/map/map-utils';
 import {
   createSupportRequest,
   getCategories,
@@ -27,6 +29,7 @@ export default function SupportRequestCreateScreen() {
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedCoordinate, setSelectedCoordinate] = useState<Coordinates | null>(null);
   const [error, setError] = useState('');
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +85,11 @@ export default function SupportRequestCreateScreen() {
       return;
     }
 
+    if (normalizedAddress && !selectedCoordinate) {
+      setError('Search the address or choose a point on the map before creating.');
+      return;
+    }
+
     setError('');
     setIsSubmitting(true);
 
@@ -91,6 +99,8 @@ export default function SupportRequestCreateScreen() {
         description: normalizedDescription,
         categoryId,
         address: normalizedAddress || undefined,
+        latitude: selectedCoordinate?.latitude,
+        longitude: selectedCoordinate?.longitude,
       });
 
       router.replace({
@@ -141,11 +151,12 @@ export default function SupportRequestCreateScreen() {
       </RequestSection>
 
       <RequestSection title="Location">
-        <RequestField
-          label="Address"
-          onChangeText={setAddress}
-          leftIcon={<Feather name="map-pin" size={18} color="#6E786F" />}
-          value={address}
+        <LocationPicker
+          address={address}
+          coordinate={selectedCoordinate}
+          helperText="Search an address to match it on the map. The request can still be created without a location."
+          onAddressChange={setAddress}
+          onCoordinateChange={setSelectedCoordinate}
         />
       </RequestSection>
 

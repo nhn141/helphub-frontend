@@ -17,6 +17,8 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { LocationPicker } from '@/components/map/location-picker';
+import { isValidCoordinate, type Coordinates } from '@/components/map/map-utils';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -30,9 +32,8 @@ export default function SupportLocationEditScreen() {
   const [location, setLocation] = useState<SupportLocationDetail | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedCoordinate, setSelectedCoordinate] = useState<Coordinates | null>(null);
   const [contactPhone, setContactPhone] = useState('');
   const [bankName, setBankName] = useState('');
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -64,9 +65,15 @@ export default function SupportLocationEditScreen() {
       setLocation(data);
       setName(data.name);
       setDescription(data.description);
-      setLatitude(data.latitude == null ? '' : String(data.latitude));
-      setLongitude(data.longitude == null ? '' : String(data.longitude));
       setAddress(data.address);
+      setSelectedCoordinate(
+        isValidCoordinate(data.latitude, data.longitude)
+          ? {
+              latitude: Number(data.latitude),
+              longitude: Number(data.longitude),
+            }
+          : null
+      );
       setContactPhone(data.contactPhone ?? '');
       setBankName(data.bankName ?? '');
       setBankAccountNumber(data.bankAccountNumber ?? '');
@@ -94,21 +101,13 @@ export default function SupportLocationEditScreen() {
       return;
     }
 
-    const parsedLatitude = Number(latitude);
-    const parsedLongitude = Number(longitude);
-
     if (!name.trim() || !description.trim() || !address.trim()) {
       setError('Name, description, and address are required.');
       return;
     }
 
-    if (!Number.isFinite(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
-      setError('Latitude must be a number between -90 and 90.');
-      return;
-    }
-
-    if (!Number.isFinite(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
-      setError('Longitude must be a number between -180 and 180.');
+    if (!selectedCoordinate) {
+      setError('Search the address or choose a point on the map before saving.');
       return;
     }
 
@@ -122,8 +121,8 @@ export default function SupportLocationEditScreen() {
         bankName,
         contactPhone,
         description: description.trim(),
-        latitude: parsedLatitude,
-        longitude: parsedLongitude,
+        latitude: selectedCoordinate.latitude,
+        longitude: selectedCoordinate.longitude,
         name: name.trim(),
       });
 
@@ -159,25 +158,14 @@ export default function SupportLocationEditScreen() {
           onChangeText={setDescription}
           value={description}
         />
-        <ManagementField label="Address" onChangeText={setAddress} value={address} />
-        <View style={styles.coordinateRow}>
-          <View style={styles.coordinateField}>
-            <ManagementField
-              keyboardType="decimal-pad"
-              label="Latitude"
-              onChangeText={setLatitude}
-              value={latitude}
-            />
-          </View>
-          <View style={styles.coordinateField}>
-            <ManagementField
-              keyboardType="decimal-pad"
-              label="Longitude"
-              onChangeText={setLongitude}
-              value={longitude}
-            />
-          </View>
-        </View>
+        <LocationPicker
+          address={address}
+          coordinate={selectedCoordinate}
+          disabled={isLoading}
+          helperText="Search the address and adjust the support location pin before saving."
+          onAddressChange={setAddress}
+          onCoordinateChange={setSelectedCoordinate}
+        />
         <ManagementField label="Contact Phone" onChangeText={setContactPhone} value={contactPhone} />
         <ManagementField label="Bank Name" onChangeText={setBankName} value={bankName} />
         <ManagementField
@@ -205,13 +193,6 @@ export default function SupportLocationEditScreen() {
 }
 
 const styles = StyleSheet.create({
-  coordinateRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  coordinateField: {
-    flex: 1,
-  },
   buttonStack: {
     gap: 12,
   },

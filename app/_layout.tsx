@@ -51,6 +51,11 @@ export default function RootLayout() {
             <Stack.Screen name="report-create" />
             <Stack.Screen name="reports-my" />
             <Stack.Screen name="report-detail" />
+            <Stack.Screen name="community-funds" />
+            <Stack.Screen name="community-fund-create" />
+            <Stack.Screen name="community-fund-detail" />
+            <Stack.Screen name="transaction-history" />
+            <Stack.Screen name="admin-statistics" />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>

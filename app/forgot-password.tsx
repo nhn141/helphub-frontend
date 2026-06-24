@@ -14,6 +14,7 @@ import {
   authPalette,
 } from '@/components/auth/auth-ui';
 import { Fonts } from '@/constants/theme';
+import { forgotPassword, getAuthErrorMessage } from '@/components/auth/auth-api';
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -25,8 +26,8 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSendCode() {
-    const normalizedEmail = email.trim();
+  async function handleSendCode() {
+    const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
       setError('Please enter your email address.');
@@ -41,12 +42,21 @@ export default function ForgotPasswordScreen() {
     setError('');
     setIsSubmitting(true);
 
-    router.push({
-      pathname: '/verify-code',
-      params: { email: normalizedEmail },
-    });
-
-    setIsSubmitting(false);
+    try {
+      const response = await forgotPassword({ email: normalizedEmail });
+      router.push({
+        pathname: '/verify-code',
+        params: {
+          email: normalizedEmail,
+          notice: response.message,
+          purpose: 'password-reset',
+        },
+      });
+    } catch (requestError) {
+      setError(getAuthErrorMessage(requestError));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

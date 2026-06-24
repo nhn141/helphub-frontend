@@ -91,18 +91,27 @@ export default function ProfileTabScreen() {
         ) : null}
 
         {canManageUsers(role) ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({
-                pathname: '/(tabs)/system',
-                params: { section: 'manage-user', view: 'users' },
-              })
-            }
-            style={styles.adminButton}>
-            <Feather name="users" size={16} color="#fff" />
-            <Text style={styles.adminButtonText}>Manage users</Text>
-          </Pressable>
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/admin-statistics' as never)}
+              style={styles.adminButton}>
+              <Feather name="bar-chart-2" size={16} color="#fff" />
+              <Text style={styles.adminButtonText}>Admin statistics</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({
+                  pathname: '/(tabs)/system',
+                  params: { section: 'manage-user', view: 'users' },
+                })
+              }
+              style={styles.secondaryButton}>
+              <Feather name="users" size={16} color={authPalette.primaryDark} />
+              <Text style={styles.profileButtonText}>Manage users</Text>
+            </Pressable>
+          </>
         ) : null}
 
         <Pressable

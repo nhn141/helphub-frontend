@@ -10,6 +10,15 @@ export type AuthSession = {
   refreshTokenExpiresIn: number;
 };
 
+export type RegisterResponse = {
+  accessToken: null;
+  refreshToken: null;
+  tokenType: string;
+  accessTokenExpiresIn: number;
+  refreshTokenExpiresIn: number;
+  message: string;
+};
+
 export type LoginPayload = {
   email: string;
   password: string;
@@ -21,6 +30,21 @@ export type RegisterPayload = {
   password: string;
   phone?: string;
   role: Exclude<UserRole, 'ADMIN' | 'COLLABORATOR'>;
+};
+
+export type VerifyEmailPayload = {
+  email: string;
+  otp: string;
+};
+
+export type ForgotPasswordPayload = {
+  email: string;
+};
+
+export type ResetPasswordPayload = {
+  email: string;
+  otp: string;
+  newPassword: string;
 };
 
 export type UserProfile = {
@@ -129,7 +153,35 @@ export async function login(payload: LoginPayload) {
 }
 
 export async function register(payload: RegisterPayload) {
-  return apiRequest<AuthSession>('/auth/register', {
+  return apiRequest<RegisterResponse>('/auth/register', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  });
+}
+
+export async function verifyEmail(payload: VerifyEmailPayload) {
+  return apiRequest<ApiEnvelope<null>>('/auth/verify-email', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  });
+}
+
+export async function resendEmailOtp(payload: ForgotPasswordPayload) {
+  return apiRequest<ApiEnvelope<null>>('/auth/resend-otp', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  });
+}
+
+export async function forgotPassword(payload: ForgotPasswordPayload) {
+  return apiRequest<ApiEnvelope<null>>('/auth/forgot-password', {
+    body: JSON.stringify(payload),
+    method: 'POST',
+  });
+}
+
+export async function resetPassword(payload: ResetPasswordPayload) {
+  return apiRequest<ApiEnvelope<null>>('/auth/reset-password', {
     body: JSON.stringify(payload),
     method: 'POST',
   });

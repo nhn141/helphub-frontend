@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,14 +14,18 @@ import {
   AuthPage,
   AuthPasswordInput,
   RememberRow,
+  AuthTextLink,
   authPalette,
 } from '@/components/auth/auth-ui';
 import { Fonts } from '@/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const initialEmail = Array.isArray(params.email) ? params.email[0] : params.email;
+  const notice = Array.isArray(params.notice) ? params.notice[0] : params.notice;
   const { isAuthenticated, isLoading, login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,6 +91,18 @@ export default function LoginScreen() {
         <RememberRow onForgotPress={() => router.push('/forgot-password')} />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {notice ? <Text style={styles.noticeText}>{notice}</Text> : null}
+        {error.toLowerCase().includes('not verified') ? (
+          <AuthTextLink
+            label="Verify Email"
+            onPress={() =>
+              router.push({
+                pathname: '/verify-code',
+                params: { email: email.trim().toLowerCase(), purpose: 'email-verification' },
+              })
+            }
+          />
+        ) : null}
 
         <AuthButton
           disabled={isLoading || isSubmitting}
@@ -128,6 +144,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 6,
+  },
+  noticeText: {
+    marginBottom: 18,
+    color: authPalette.primaryDark,
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: Fonts.rounded,
   },
   footerText: {
     color: authPalette.muted,

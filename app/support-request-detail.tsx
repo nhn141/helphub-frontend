@@ -545,7 +545,12 @@ export default function SupportRequestDetailScreen() {
           </View>
 
           {/* Requester Info */}
-          <View style={styles.authorRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.push({ pathname: '/user-detail', params: { id: requestDetail.requesterId } })
+            }
+            style={styles.authorRow}>
             <UserAvatar
               name={requestDetail.requesterName}
               size={40}
@@ -557,7 +562,7 @@ export default function SupportRequestDetailScreen() {
               <Text style={styles.authorName}>{requestDetail.requesterName}</Text>
               <Text style={styles.timeText}>{formatDateTime(requestDetail.createdAt)}</Text>
             </View>
-          </View>
+          </Pressable>
 
           {/* Content */}
           <Text style={styles.description}>{requestDetail.description}</Text>

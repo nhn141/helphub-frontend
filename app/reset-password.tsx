@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getAuthErrorMessage, resetPassword } from '@/components/auth/auth-api';
 import {
   AuthBrandHeader,
   AuthButton,
@@ -24,40 +25,54 @@ function getStringParam(value: string | string[] | undefined) {
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const email = getStringParam(params.email);
+  const email = getStringParam(params.email)?.trim().toLowerCase() ?? '';
+  const otp = getStringParam(params.otp) ?? '';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const strength = getPasswordStrength(newPassword);
 
-  function handleResetPassword() {
-    if (!newPassword || !confirmPassword) {
-      setError('Please enter and confirm your new password.');
-      setSuccess('');
+  async function handleResetPassword() {
+    if (!email || !otp) {
+      setError('Reset information is missing. Please request a new code.');
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.');
-      setSuccess('');
+    if (!newPassword || !confirmPassword) {
+      setError('Please enter and confirm your new password.');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
       return;
     }
 
     if (strength.score < 3) {
       setError('Please choose a stronger password before resetting.');
-      setSuccess('');
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setError('Password confirmation does not match.');
-      setSuccess('');
       return;
     }
 
     setError('');
-    setSuccess('Your password has been successfully reset.');
+    setIsSubmitting(true);
+
+    try {
+      const response = await resetPassword({ email, newPassword, otp });
+      router.replace({
+        pathname: '/login',
+        params: { email, notice: response.message },
+      });
+    } catch (resetError) {
+      setError(getAuthErrorMessage(resetError));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -76,7 +91,6 @@ export default function ResetPasswordScreen() {
           onChangeText={(value) => {
             setNewPassword(value);
             setError('');
-            setSuccess('');
           }}
           placeholder="........"
           textContentType="newPassword"
@@ -91,7 +105,6 @@ export default function ResetPasswordScreen() {
           onChangeText={(value) => {
             setConfirmPassword(value);
             setError('');
-            setSuccess('');
           }}
           placeholder="........"
           textContentType="password"
@@ -109,38 +122,23 @@ export default function ResetPasswordScreen() {
         />
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {success ? <Text style={styles.successText}>{success}</Text> : null}
 
         <View style={styles.buttonWrap}>
-          <AuthButton label="Reset Password" onPress={handleResetPassword} />
+          <AuthButton
+            disabled={isSubmitting}
+            label={isSubmitting ? 'Resetting...' : 'Reset Password'}
+            onPress={handleResetPassword}
+          />
         </View>
 
-        <AuthTextLink label="Back to Login" onPress={() => router.push('/login' as never)} />
+        <AuthTextLink label="Request a New Code" onPress={() => router.push('/forgot-password' as never)} />
       </AuthPage>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: authPalette.background,
-  },
-  errorText: {
-    marginTop: 16,
-    color: '#B42318',
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: Fonts.rounded,
-  },
-  successText: {
-    marginTop: 16,
-    color: authPalette.primaryDark,
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: Fonts.rounded,
-  },
-  buttonWrap: {
-    marginTop: 40,
-  },
+  buttonWrap: { marginTop: 40 },
+  errorText: { color: '#B42318', fontFamily: Fonts.rounded, fontSize: 13, lineHeight: 19, marginTop: 16 },
+  safeArea: { backgroundColor: authPalette.background, flex: 1 },
 });

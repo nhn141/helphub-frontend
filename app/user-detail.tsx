@@ -6,6 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
+import { createPrivateConversationByEmail } from '@/components/chat/chat-api';
 import {
   ManagementBadge,
   ManagementButton,
@@ -35,8 +36,10 @@ export default function UserDetailScreen() {
   const [user, setUser] = useState<UserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isStartingChat, setIsStartingChat] = useState(false);
 
   const isAdmin = currentUser?.role === 'ADMIN';
+  const isSelf = currentUser?.id === id;
   const detailParams = id ? { id } : undefined;
 
   const loadUser = useCallback(async () => {
@@ -46,10 +49,6 @@ export default function UserDetailScreen() {
 
     if (!session?.accessToken) {
       router.replace('/login' as never);
-      return;
-    }
-
-    if (!isAdmin) {
       return;
     }
 
@@ -69,7 +68,7 @@ export default function UserDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, isAdmin, isAuthLoading, session?.accessToken]);
+  }, [id, isAuthLoading, session?.accessToken]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,21 +76,30 @@ export default function UserDetailScreen() {
     }, [loadUser])
   );
 
-  if (!isAdmin && !isAuthLoading) {
-    return (
-      <ManagementScreen title="User Detail" onBackPress={() => router.push('/(tabs)/system')}>
-        <ManagementCard>
-          <Text style={styles.restrictedTitle}>Admin only</Text>
-          <Text style={styles.restrictedBody}>User management belongs to the admin workspace.</Text>
-        </ManagementCard>
-      </ManagementScreen>
-    );
+  async function handleMessage() {
+    if (!session?.accessToken || !user || isSelf || isStartingChat) {
+      return;
+    }
+
+    setIsStartingChat(true);
+    setError('');
+    try {
+      const conversation = await createPrivateConversationByEmail(session.accessToken, user.email);
+      router.push({
+        pathname: '/(tabs)/social',
+        params: { conversationId: conversation.id, view: 'chat' },
+      });
+    } catch (chatError) {
+      setError(getAuthErrorMessage(chatError));
+    } finally {
+      setIsStartingChat(false);
+    }
   }
 
   return (
     <ManagementScreen
       title="User Detail"
-      onBackPress={() => router.push('/(tabs)/system')}
+      onBackPress={() => router.back()}
       rightSlot={
         user ? (
           <ManagementBadge
@@ -117,15 +125,17 @@ export default function UserDetailScreen() {
           <ManagementSection
             title="Profile"
             action={
-              <ManagementInlineLink
-                label="Role"
-                onPress={() =>
-                  router.push({
-                    pathname: '/user-role',
-                    params: detailParams,
-                  })
-                }
-              />
+              isAdmin ? (
+                <ManagementInlineLink
+                  label="Role"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user-role',
+                      params: detailParams,
+                    })
+                  }
+                />
+              ) : undefined
             }>
             <ManagementCard>
               <View style={styles.profileTop}>
@@ -149,15 +159,17 @@ export default function UserDetailScreen() {
           <ManagementSection
             title="Account"
             action={
-              <ManagementInlineLink
-                label="Status"
-                onPress={() =>
-                  router.push({
-                    pathname: '/user-status',
-                    params: detailParams,
-                  })
-                }
-              />
+              isAdmin ? (
+                <ManagementInlineLink
+                  label="Status"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user-status',
+                      params: detailParams,
+                    })
+                  }
+                />
+              ) : undefined
             }>
             <ManagementCard>
               <View style={styles.metaStack}>
@@ -183,27 +195,52 @@ export default function UserDetailScreen() {
           </ManagementSection>
 
           <View style={styles.buttonStack}>
-            <ManagementButton
-              label="Update Role"
-              leftIcon={<Feather name="shield" size={16} color="#fff" />}
-              onPress={() =>
-                router.push({
-                  pathname: '/user-role',
-                  params: detailParams,
-                })
-              }
-            />
-            <ManagementButton
-              label="Update Status"
-              leftIcon={<Feather name="toggle-left" size={16} color={authPalette.primaryDark} />}
-              onPress={() =>
-                router.push({
-                  pathname: '/user-status',
-                  params: detailParams,
-                })
-              }
-              variant="outline"
-            />
+            {isAdmin ? (
+              <>
+                <ManagementButton
+                  label="Update Role"
+                  leftIcon={<Feather name="shield" size={16} color="#fff" />}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user-role',
+                      params: detailParams,
+                    })
+                  }
+                />
+                <ManagementButton
+                  label="Update Status"
+                  leftIcon={<Feather name="toggle-left" size={16} color={authPalette.primaryDark} />}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/user-status',
+                      params: detailParams,
+                    })
+                  }
+                  variant="outline"
+                />
+              </>
+            ) : null}
+            {!isSelf ? (
+              <>
+                <ManagementButton
+                  disabled={isStartingChat}
+                  label={isStartingChat ? 'Starting chat...' : 'Message'}
+                  leftIcon={<Feather name="message-circle" size={16} color="#fff" />}
+                  onPress={handleMessage}
+                />
+                <ManagementButton
+                  label="Report Profile"
+                  leftIcon={<Feather name="flag" size={16} color={authPalette.primaryDark} />}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/report-create',
+                      params: { targetId: user.id, targetName: user.fullName, targetType: 'USER' },
+                    } as never)
+                  }
+                  variant="outline"
+                />
+              </>
+            ) : null}
           </View>
         </>
       ) : null}
@@ -260,17 +297,5 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
-  },
-  restrictedTitle: {
-    fontSize: 20,
-    color: authPalette.text,
-    fontFamily: Fonts.rounded,
-  },
-  restrictedBody: {
-    marginTop: 10,
-    fontSize: 14,
-    lineHeight: 22,
-    color: authPalette.muted,
-    fontFamily: Fonts.rounded,
   },
 });
