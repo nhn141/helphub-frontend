@@ -392,6 +392,7 @@ export default function SystemTabScreen() {
       {activeSection === 'manage-user' ? (
         <>
           <SectionTabs
+            iconPlacement="stacked"
             items={[
               {
                 active: activeManageView === 'users',
@@ -412,6 +413,9 @@ export default function SystemTabScreen() {
                 onPress: () => openManageUserView('role-upgrades'),
               },
             ]}
+            numberOfLines={2}
+            tabStyle={styles.manageUserTab}
+            textStyle={styles.manageUserTabText}
           />
 
           {activeManageView === 'users' ? (
@@ -737,6 +741,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 4,
+  },
+  manageUserTab: {
+    minHeight: 66,
+    paddingHorizontal: 6,
+  },
+  manageUserTabText: {
+    fontSize: 14,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   searchRow: {
     alignItems: 'center',
