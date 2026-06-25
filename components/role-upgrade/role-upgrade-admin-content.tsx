@@ -199,12 +199,12 @@ export function RoleUpgradeAdminContent() {
         <SurfaceCard>
           <View style={styles.filters}>
             {filters.map((item) => (
-              <Pressable
-                accessibilityRole="button"
+              <FilterChip
+                active={filter === item.value}
                 key={item.value}
-                onPress={() => handleFilter(item.value)}>
-                <FilterChip active={filter === item.value} label={item.label} />
-              </Pressable>
+                label={item.label}
+                onPress={() => handleFilter(item.value)}
+              />
             ))}
           </View>
         </SurfaceCard>

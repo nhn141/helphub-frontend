@@ -152,12 +152,12 @@ export default function SupportLocationsTabScreen() {
             <SurfaceCard>
               <View style={styles.filterRow}>
                 {filters.map((item) => (
-                  <Pressable
+                  <FilterChip
                     key={item.value}
-                    accessibilityRole="button"
-                    onPress={() => setActiveFilter(item.value)}>
-                    <FilterChip active={activeFilter === item.value} label={item.label} />
-                  </Pressable>
+                    active={activeFilter === item.value}
+                    label={item.label}
+                    onPress={() => setActiveFilter(item.value)}
+                  />
                 ))}
               </View>
             </SurfaceCard>

@@ -137,12 +137,12 @@ export default function RequestsTabScreen() {
         <SurfaceCard>
           <View style={styles.filterRow}>
             {statusFilters.map((item) => (
-              <Pressable
+              <FilterChip
                 key={item.label}
-                accessibilityRole="button"
-                onPress={() => setActiveStatus(item.value)}>
-                <FilterChip active={activeStatus === item.value} label={item.label} />
-              </Pressable>
+                active={activeStatus === item.value}
+                label={item.label}
+                onPress={() => setActiveStatus(item.value)}
+              />
             ))}
           </View>
         </SurfaceCard>

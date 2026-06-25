@@ -465,12 +465,12 @@ export default function SystemTabScreen() {
 
                   <View style={styles.filterWrap}>
                     {roleOptions.map((option) => (
-                      <Pressable
-                        accessibilityRole="button"
+                      <FilterChip
+                        active={roleFilter === option.value}
                         key={option.value}
-                        onPress={() => handleRoleFilter(option.value)}>
-                        <FilterChip active={roleFilter === option.value} label={option.label} />
-                      </Pressable>
+                        label={option.label}
+                        onPress={() => handleRoleFilter(option.value)}
+                      />
                     ))}
                   </View>
 
@@ -594,12 +594,12 @@ export default function SystemTabScreen() {
                 <SurfaceCard>
                   <View style={styles.filterWrap}>
                     {assignmentFilters.map((item) => (
-                      <Pressable
-                        accessibilityRole="button"
+                      <FilterChip
+                        active={assignmentFilter === item.value}
                         key={item.value}
-                        onPress={() => setAssignmentFilter(item.value)}>
-                        <FilterChip active={assignmentFilter === item.value} label={item.label} />
-                      </Pressable>
+                        label={item.label}
+                        onPress={() => setAssignmentFilter(item.value)}
+                      />
                     ))}
                   </View>
                 </SurfaceCard>

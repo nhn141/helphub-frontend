@@ -15,6 +15,7 @@ export type CommunityFundSummary = {
 };
 
 export type CommunityFundDetail = CommunityFundSummary & {
+  communityConversationId: string | null;
   description: string;
   updatedAt: string | null;
 };

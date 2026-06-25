@@ -371,6 +371,21 @@ export default function CommunityFundDetailScreen() {
                       variant="outline"
                     />
                   </View>
+                  {fund.communityConversationId ? (
+                    <View style={styles.topGap}>
+                      <ManagementButton
+                        label="Open fund chat"
+                        leftIcon={<Feather name="message-circle" size={15} color={authPalette.primaryDark} />}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(tabs)/social',
+                            params: { conversationId: fund.communityConversationId, view: 'chat' },
+                          } as never)
+                        }
+                        variant="outline"
+                      />
+                    </View>
+                  ) : null}
                   {canManage ? (
                     <View style={styles.topGap}>
                       <ManagementButton

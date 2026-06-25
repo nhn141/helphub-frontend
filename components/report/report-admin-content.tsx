@@ -100,12 +100,12 @@ export function ReportAdminContent() {
         <SurfaceCard>
           <View style={styles.filters}>
             {filters.map((item) => (
-              <Pressable
-                accessibilityRole="button"
+              <FilterChip
+                active={filter === item.value}
                 key={item.value}
-                onPress={() => setFilter(item.value)}>
-                <FilterChip active={filter === item.value} label={item.label} />
-              </Pressable>
+                label={item.label}
+                onPress={() => setFilter(item.value)}
+              />
             ))}
           </View>
         </SurfaceCard>
