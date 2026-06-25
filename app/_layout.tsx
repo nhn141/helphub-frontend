@@ -53,6 +53,7 @@ export default function RootLayout() {
               <Stack.Screen name="report-create" />
               <Stack.Screen name="reports-my" />
               <Stack.Screen name="report-detail" />
+              <Stack.Screen name="role-upgrade-request" />
               <Stack.Screen name="community-funds" />
               <Stack.Screen name="community-fund-create" />
               <Stack.Screen name="community-fund-detail" />

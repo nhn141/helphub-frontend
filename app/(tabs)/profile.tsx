@@ -19,6 +19,7 @@ export default function ProfileTabScreen() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const displayName = user?.fullName ?? 'Guest User';
   const displayEmail = user?.email ?? 'guest@helphub.app';
+  const isVolunteer = user?.role === 'VOLUNTEER';
   const initials = displayName
     .split(' ')
     .filter(Boolean)
@@ -89,6 +90,15 @@ export default function ProfileTabScreen() {
               <Feather name="flag" size={16} color={authPalette.primaryDark} />
               <Text style={styles.profileButtonText}>My reports</Text>
             </Pressable>
+            {isVolunteer ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push('/role-upgrade-request' as never)}
+                style={styles.secondaryButton}>
+                <Feather name="award" size={16} color={authPalette.primaryDark} />
+                <Text style={styles.profileButtonText}>Collaborator request</Text>
+              </Pressable>
+            ) : null}
           </>
         ) : null}
 

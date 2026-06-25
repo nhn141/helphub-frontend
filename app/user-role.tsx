@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -51,6 +52,10 @@ export default function UserRoleScreen() {
     pathname: '/user-detail' as const,
     params: id ? { id } : undefined,
   };
+  const roleChoices =
+    targetUser?.role === 'VOLUNTEER'
+      ? roleOptions.filter((option) => option.value !== 'COLLABORATOR')
+      : roleOptions;
 
   const loadUser = useCallback(async () => {
     if (isAuthLoading) {
@@ -118,6 +123,13 @@ export default function UserRoleScreen() {
       return;
     }
 
+    if (targetUser.role === 'VOLUNTEER' && role === 'COLLABORATOR') {
+      const message = 'Volunteer upgrades to collaborator are handled through role upgrade requests.';
+      setError(message);
+      showToast({ message, type: 'error' });
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
@@ -169,10 +181,33 @@ export default function UserRoleScreen() {
         <ManagementChoiceGroup
           label="Role"
           onChange={(value) => setRole(value as UserRole)}
-          options={roleOptions}
+          options={roleChoices}
           value={role}
         />
       </ManagementSection>
+
+      {targetUser?.role === 'VOLUNTEER' ? (
+        <ManagementSection title="Collaborator Upgrade">
+          <ManagementCard>
+            <Text style={styles.helperText}>
+              Volunteer to collaborator changes are approved from submitted role upgrade requests.
+            </Text>
+            <View style={styles.requestButton}>
+              <ManagementButton
+                label="Open Requests"
+                leftIcon={<Feather name="award" size={16} color={authPalette.primaryDark} />}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/system',
+                    params: { section: 'manage-user', view: 'role-upgrades' },
+                  })
+                }
+                variant="outline"
+              />
+            </View>
+          </ManagementCard>
+        </ManagementSection>
+      ) : null}
 
       <View style={styles.buttonStack}>
         <ManagementButton
@@ -205,6 +240,9 @@ const styles = StyleSheet.create({
   },
   buttonStack: {
     gap: 12,
+  },
+  requestButton: {
+    marginTop: 14,
   },
   helperText: {
     fontSize: 14,

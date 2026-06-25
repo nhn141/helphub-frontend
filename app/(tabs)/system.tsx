@@ -27,12 +27,13 @@ import {
 } from '@/components/support-request/request-api';
 import { UserAvatar } from '@/components/user/user-avatar';
 import { ReportAdminContent } from '@/components/report/report-admin-content';
+import { RoleUpgradeAdminContent } from '@/components/role-upgrade/role-upgrade-admin-content';
 import { useToast } from '@/components/ui/toast';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 type SystemSection = 'manage-user' | 'report' | 'category';
-type ManageUserView = 'users' | 'assignments';
+type ManageUserView = 'users' | 'assignments' | 'role-upgrades';
 type AssignmentFilter = VolunteerAssignmentStatus | 'ALL';
 
 const userRoles: UserRole[] = ['REQUESTER', 'VOLUNTEER', 'COLLABORATOR', 'ADMIN'];
@@ -66,7 +67,11 @@ function getSystemSection(value: string | undefined): SystemSection {
 }
 
 function getManageUserView(value: string | undefined): ManageUserView {
-  return value === 'assignments' ? 'assignments' : 'users';
+  if (value === 'assignments' || value === 'role-upgrades') {
+    return value;
+  }
+
+  return 'users';
 }
 
 function getAssignmentTone(status: VolunteerAssignmentStatus): 'green' | 'mint' | 'amber' | 'slate' | 'red' {
@@ -400,6 +405,12 @@ export default function SystemTabScreen() {
                 label: 'Volunteer Assignment',
                 onPress: () => openManageUserView('assignments'),
               },
+              {
+                active: activeManageView === 'role-upgrades',
+                icon: 'award',
+                label: 'Role Upgrade',
+                onPress: () => openManageUserView('role-upgrades'),
+              },
             ]}
           />
 
@@ -556,7 +567,7 @@ export default function SystemTabScreen() {
                 </View>
               ) : null}
             </>
-          ) : (
+          ) : activeManageView === 'assignments' ? (
             <>
               <View style={styles.statGrid}>
                 <MiniStat label="Total" value={assignments.length} />
@@ -670,6 +681,8 @@ export default function SystemTabScreen() {
                 ) : null}
               </View>
             </>
+          ) : (
+            <RoleUpgradeAdminContent />
           )}
         </>
       ) : null}

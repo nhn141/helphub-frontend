@@ -26,7 +26,7 @@ import {
 import { Fonts } from '@/constants/theme';
 
 type AdminStatsTab = 'users' | 'requests' | 'categories';
-type PieSegment = pieDataItem & { label: string };
+type PieSegment = pieDataItem & { label: string; legendColor: string };
 
 const chartColors = [
   '#2E7D55',
@@ -53,11 +53,16 @@ function buildPieSegments(
 ): PieSegment[] {
   return items
     .filter((item) => Number(item.value) > 0)
-    .map((item, index) => ({
-      color: item.color ?? chartColors[index % chartColors.length],
-      label: item.label,
-      value: Number(item.value),
-    }));
+    .map((item, index) => {
+      const color = item.color ?? chartColors[index % chartColors.length];
+
+      return {
+        color,
+        label: item.label,
+        legendColor: color,
+        value: Number(item.value),
+      };
+    });
 }
 
 function getTotal(segments: PieSegment[]) {
@@ -418,7 +423,7 @@ function LegendRow({ item, total }: { item: PieSegment; total: number }) {
 
   return (
     <View style={styles.legendRow}>
-      <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+      <View style={[styles.legendSwatch, { backgroundColor: item.legendColor }]} />
       <Text numberOfLines={1} style={styles.legendLabel}>
         {item.label}
       </Text>
@@ -473,29 +478,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  legendDot: {
+  legendSwatch: {
+    borderColor: 'rgba(15, 75, 52, 0.12)',
     borderRadius: 5,
-    height: 10,
-    width: 10,
+    borderWidth: 1,
+    height: 14,
+    width: 28,
   },
   legendLabel: {
     color: authPalette.text,
     flex: 1,
     fontFamily: Fonts.rounded,
     fontSize: 13,
+    minWidth: 0,
   },
   legendRow: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 9,
+    width: '100%',
   },
   legendStack: {
-    flex: 1,
+    alignSelf: 'stretch',
     gap: 10,
     minWidth: 0,
+    width: '100%',
   },
   legendValue: {
     color: authPalette.muted,
+    flexShrink: 0,
     fontFamily: Fonts.rounded,
     fontSize: 12,
   },
