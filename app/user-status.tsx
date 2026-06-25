@@ -19,6 +19,7 @@ import {
   updateUserStatus,
   type UserDetail,
 } from '@/components/management/user-api';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 const statusOptions = [
@@ -34,6 +35,7 @@ export default function UserStatusScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { isLoading: isAuthLoading, session, user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [targetUser, setTargetUser] = useState<UserDetail | null>(null);
   const [status, setStatus] = useState('ACTIVE');
   const [isLoading, setIsLoading] = useState(false);
@@ -92,19 +94,25 @@ export default function UserStatusScreen() {
     }
 
     if (!id || !targetUser) {
-      setError('Missing user ID.');
+      const message = 'Missing user ID.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     const isActive = status === 'ACTIVE';
 
     if (isActive === targetUser.isActive) {
-      setError('User status is already set to this value.');
+      const message = 'User status is already set to this value.';
+      setError(message);
+      showToast({ message, type: 'info' });
       return;
     }
 
     if (targetUser.id === currentUser?.id && !isActive) {
-      setError('Admin cannot deactivate their own account.');
+      const message = 'Admin cannot deactivate their own account.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -113,9 +121,12 @@ export default function UserStatusScreen() {
 
     try {
       await updateUserStatus(session.accessToken, id, { isActive });
+      showToast({ message: 'User status updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (statusError) {
-      setError(getAuthErrorMessage(statusError));
+      const message = getAuthErrorMessage(statusError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

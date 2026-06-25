@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import {
@@ -24,6 +24,7 @@ import {
   getMySupportRequests,
   type SupportRequestSummary,
 } from '@/components/support-request/request-api';
+import { useToast } from '@/components/ui/toast';
 
 const visibilityOptions = [
   { label: 'Public', value: 'PUBLIC', detail: 'Visible to everyone in the app' },
@@ -38,6 +39,7 @@ export default function PostEditScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
+  const { showToast } = useToast();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [content, setContent] = useState('');
@@ -86,13 +88,14 @@ export default function PostEditScreen() {
         visibility,
         supportRequestId: supportRequestId || null,
       });
+      showToast({ message: 'Post updated.', type: 'success' });
       router.push(`/post-detail?id=${id}`);
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Failed to update post.');
+      showToast({ message: err?.message ?? 'Failed to update post.', type: 'error' });
     } finally {
       setSaving(false);
     }
-  }, [session?.accessToken, id, content, visibility, supportRequestId, router]);
+  }, [session?.accessToken, id, content, visibility, supportRequestId, router, showToast]);
 
   if (loading) {
     return (

@@ -19,6 +19,7 @@ import {
   RequestSection,
   RequestStatusBadge,
 } from '@/components/support-request/request-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -28,6 +29,7 @@ function getStringParam(value: string | string[] | undefined) {
 export default function SupportRequestRejectScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { showToast } = useToast();
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const [requestDetail, setRequestDetail] = useState<SupportRequestDetail | null>(null);
@@ -73,7 +75,9 @@ export default function SupportRequestRejectScreen() {
     const rejectionReason = reason.trim();
 
     if (!rejectionReason) {
-      setError('Rejection reason is required.');
+      const message = 'Rejection reason is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -82,9 +86,12 @@ export default function SupportRequestRejectScreen() {
 
     try {
       await rejectSupportRequest(session.accessToken, id, rejectionReason);
+      showToast({ message: 'Support request rejected.', type: 'success' });
       router.push(detailRoute as never);
     } catch (rejectError) {
-      setError(getAuthErrorMessage(rejectError));
+      const message = getAuthErrorMessage(rejectError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

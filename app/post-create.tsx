@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
@@ -29,11 +29,13 @@ import {
   getMySupportRequests,
   type SupportRequestSummary,
 } from '@/components/support-request/request-api';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function PostCreateScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const { showToast } = useToast();
 
   const [content, setContent] = useState('');
   const [visibility, setVisibility] = useState<PostVisibility>('PUBLIC');
@@ -87,11 +89,11 @@ export default function PostCreateScreen() {
     } catch (err: any) {
       const message = err?.message ?? 'Could not choose an image.';
       setError(message);
-      Alert.alert('Image picker', message);
+      showToast({ message, type: 'error' });
     } finally {
       setPickingImage(false);
     }
-  }, [pickingImage]);
+  }, [pickingImage, showToast]);
 
   const handleCreate = useCallback(async () => {
     if (!session?.accessToken || content.trim().length === 0) return;
@@ -127,14 +129,16 @@ export default function PostCreateScreen() {
         );
       }
 
+      showToast({ message: 'Post created.', type: 'success' });
       router.push(`/post-detail?id=${newPost.id}`);
     } catch (err: any) {
-      setError(err?.message ?? 'Failed to create post.');
-      Alert.alert('Error', err?.message ?? 'Failed to create post.');
+      const message = err?.message ?? 'Failed to create post.';
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setSubmitting(false);
     }
-  }, [session?.accessToken, content, visibility, supportRequestId, selectedImages, router]);
+  }, [session?.accessToken, content, visibility, supportRequestId, selectedImages, router, showToast]);
 
   const toggleVisibility = () => {
     setVisibility((prev) => (prev === 'PUBLIC' ? 'VOLUNTEERS_ONLY' : 'PUBLIC'));

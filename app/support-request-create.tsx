@@ -20,10 +20,12 @@ import {
   RequestScreen,
   RequestSection,
 } from '@/components/support-request/request-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function SupportRequestCreateScreen() {
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -76,17 +78,23 @@ export default function SupportRequestCreateScreen() {
     }
 
     if (user?.role !== 'REQUESTER') {
-      setError('Only requester accounts can create support requests.');
+      const message = 'Only requester accounts can create support requests.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!normalizedTitle || !normalizedDescription || !categoryId) {
-      setError('Please enter a title, description, and category.');
+      const message = 'Please enter a title, description, and category.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (normalizedAddress && !selectedCoordinate) {
-      setError('Search the address or choose a point on the map before creating.');
+      const message = 'Search the address or choose a point on the map before creating.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -103,12 +111,15 @@ export default function SupportRequestCreateScreen() {
         longitude: selectedCoordinate?.longitude,
       });
 
+      showToast({ message: 'Support request created.', type: 'success' });
       router.replace({
         pathname: '/support-request-detail',
         params: { id: createdRequest.id, from: 'my' },
       });
     } catch (createError) {
-      setError(getAuthErrorMessage(createError));
+      const message = getAuthErrorMessage(createError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

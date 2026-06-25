@@ -2,7 +2,6 @@ import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -25,6 +24,7 @@ import {
   type SharedItemType,
 } from '@/components/chat/chat-api';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 type ShareItemSheetProps = {
@@ -43,6 +43,7 @@ export function ShareItemSheet({
   visible,
 }: ShareItemSheetProps) {
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -97,9 +98,11 @@ export function ShareItemSheet({
         buildSharedItemMessage(itemType, itemId, itemTitle)
       );
       onClose();
-      Alert.alert('Shared', `This ${itemLabel} was shared to chat.`);
+      showToast({ message: `This ${itemLabel} was shared to chat.`, type: 'success' });
     } catch (shareError) {
-      setError(shareError instanceof Error ? shareError.message : 'Could not share this item.');
+      const message = shareError instanceof Error ? shareError.message : 'Could not share this item.';
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setSendingConversationId(null);
     }

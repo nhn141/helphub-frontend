@@ -27,6 +27,7 @@ import {
 } from '@/components/support-request/request-api';
 import { UserAvatar } from '@/components/user/user-avatar';
 import { ReportAdminContent } from '@/components/report/report-admin-content';
+import { useToast } from '@/components/ui/toast';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
@@ -91,6 +92,7 @@ function getAssignmentKey(assignment: VolunteerAssignment) {
 export default function SystemTabScreen() {
   const params = useLocalSearchParams();
   const { isLoading: isAuthLoading, session, user } = useAuth();
+  const { showToast } = useToast();
   const activeSection = getSystemSection(getStringParam(params.section));
   const activeManageView = getManageUserView(getStringParam(params.view));
   const isAdmin = user?.role === 'ADMIN';
@@ -299,8 +301,11 @@ export default function SystemTabScreen() {
       setAssignments((current) =>
         current.map((item) => (getAssignmentKey(item) === key ? updated : item))
       );
+      showToast({ message: 'Volunteer assignment approved.', type: 'success' });
     } catch (approveError) {
-      setAssignmentError(getAuthErrorMessage(approveError));
+      const message = getAuthErrorMessage(approveError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setActioningAssignmentKey(null);
     }
@@ -331,8 +336,11 @@ export default function SystemTabScreen() {
         delete next[key];
         return next;
       });
+      showToast({ message: 'Volunteer assignment rejected.', type: 'success' });
     } catch (rejectError) {
-      setAssignmentError(getAuthErrorMessage(rejectError));
+      const message = getAuthErrorMessage(rejectError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setActioningAssignmentKey(null);
     }

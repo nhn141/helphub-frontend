@@ -19,6 +19,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 const statusOptions = [
@@ -34,6 +35,7 @@ export default function CategoryStatusScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session } = useAuth();
+  const { showToast } = useToast();
 
   const [category, setCategory] = useState<CategoryDetail | null>(null);
   const [status, setStatus] = useState('ACTIVE');
@@ -53,7 +55,9 @@ export default function CategoryStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing category ID.');
+      const message = 'Missing category ID.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -69,7 +73,7 @@ export default function CategoryStatusScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, session?.accessToken]);
+  }, [id, session?.accessToken, showToast]);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,7 +88,9 @@ export default function CategoryStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing category ID.');
+      const message = 'Missing category ID.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -96,9 +102,12 @@ export default function CategoryStatusScreen() {
         isActive: status === 'ACTIVE',
       });
 
+      showToast({ message: 'Category status updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (statusError) {
-      setError(getAuthErrorMessage(statusError));
+      const message = getAuthErrorMessage(statusError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

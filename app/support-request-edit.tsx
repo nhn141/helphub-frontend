@@ -22,6 +22,7 @@ import {
   RequestSection,
   RequestStatusBadge,
 } from '@/components/support-request/request-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -32,6 +33,7 @@ export default function SupportRequestEditScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [requestDetail, setRequestDetail] = useState<SupportRequestDetail | null>(null);
   const [title, setTitle] = useState('');
@@ -101,27 +103,37 @@ export default function SupportRequestEditScreen() {
     }
 
     if (!id || !requestDetail) {
-      setError('Missing support request detail.');
+      const message = 'Missing support request detail.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (user?.id !== requestDetail.requesterId || user.role !== 'REQUESTER') {
-      setError('You can only edit your own requester support requests.');
+      const message = 'You can only edit your own requester support requests.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (requestDetail.status !== 'PENDING') {
-      setError('Only pending support requests can be updated.');
+      const message = 'Only pending support requests can be updated.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!normalizedTitle || !normalizedDescription || !categoryId) {
-      setError('Please enter a title, description, and category.');
+      const message = 'Please enter a title, description, and category.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (normalizedAddress && !selectedCoordinate) {
-      setError('Search the address or choose a point on the map before saving.');
+      const message = 'Search the address or choose a point on the map before saving.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -138,12 +150,15 @@ export default function SupportRequestEditScreen() {
         longitude: selectedCoordinate?.longitude,
       });
 
+      showToast({ message: 'Support request updated.', type: 'success' });
       router.replace({
         pathname: '/support-request-detail',
         params: { id: updatedRequest.id, from: 'my' },
       });
     } catch (saveError) {
-      setError(getAuthErrorMessage(saveError));
+      const message = getAuthErrorMessage(saveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

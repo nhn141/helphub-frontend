@@ -15,10 +15,12 @@ import {
   RememberRow,
   authPalette,
 } from '@/components/auth/auth-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { isAuthenticated, isLoading, login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,9 @@ export default function LoginScreen() {
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail || !password) {
-      setError('Please enter your email and password.');
+      const message = 'Please enter your email and password.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -47,9 +51,12 @@ export default function LoginScreen() {
         email: normalizedEmail,
         password,
       });
+      showToast({ message: 'Logged in successfully.', type: 'success' });
       router.replace('/(tabs)');
     } catch (loginError) {
-      setError(getAuthErrorMessage(loginError));
+      const message = getAuthErrorMessage(loginError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

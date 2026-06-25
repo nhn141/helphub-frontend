@@ -18,6 +18,7 @@ import {
   authPalette,
   getPasswordStrength,
 } from '@/components/auth/auth-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 const roleOptions = [
@@ -27,6 +28,7 @@ const roleOptions = [
 
 export default function CreateAccountScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,22 +45,30 @@ export default function CreateAccountScreen() {
     const normalizedPhone = phone.trim();
 
     if (!normalizedFullName || !normalizedEmail || !password || !confirmPassword) {
-      setError('Please fill in all required fields.');
+      const message = 'Please fill in all required fields.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
+      const message = 'Password must be at least 8 characters.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (getPasswordStrength(password).score < 3) {
-      setError('Please use a stronger password (must include uppercase, numbers, or symbols).');
+      const message = 'Please use a stronger password (must include uppercase, numbers, or symbols).';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Password confirmation does not match.');
+      const message = 'Password confirmation does not match.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -73,6 +83,7 @@ export default function CreateAccountScreen() {
         phone: normalizedPhone || undefined,
         role,
       });
+      showToast({ message: response.message, type: 'success' });
       router.replace({
         pathname: '/verify-code',
         params: {
@@ -82,7 +93,9 @@ export default function CreateAccountScreen() {
         },
       });
     } catch (registerError) {
-      setError(getAuthErrorMessage(registerError));
+      const message = getAuthErrorMessage(registerError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

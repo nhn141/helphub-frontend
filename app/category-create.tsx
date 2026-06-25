@@ -11,10 +11,12 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function CategoryCreateScreen() {
   const { session } = useAuth();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
@@ -29,12 +31,16 @@ export default function CategoryCreateScreen() {
     }
 
     if (!name.trim()) {
-      setError('Category name is required.');
+      const message = 'Category name is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!code.trim()) {
-      setError('Category code is required.');
+      const message = 'Category code is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -49,12 +55,15 @@ export default function CategoryCreateScreen() {
         iconUrl: iconUrl.trim() || null,
       });
 
+      showToast({ message: 'Category created.', type: 'success' });
       router.replace({
         pathname: '/category-detail',
         params: { id: createdCategory.id },
       });
     } catch (createError) {
-      setError(getAuthErrorMessage(createError));
+      const message = getAuthErrorMessage(createError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

@@ -25,6 +25,7 @@ import {
   type SupportRequestDetail,
 } from '@/components/support-request/request-api';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
@@ -36,6 +37,7 @@ export default function SupportLocationAssignRequestScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const canAssignLocation = Boolean(user?.role && canManageSupportLocations(user.role));
   const [location, setLocation] = useState<SupportLocationDetail | null>(null);
   const [requests, setRequests] = useState<SupportRequestDetail[]>([]);
@@ -119,12 +121,16 @@ export default function SupportLocationAssignRequestScreen() {
     }
 
     if (!canAssignLocation) {
-      setError('Only collaborators and admins can assign support locations.');
+      const message = 'Only collaborators and admins can assign support locations.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!id || !selectedRequestId) {
-      setError('Choose an approved request before assigning.');
+      const message = 'Choose an approved request before assigning.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -133,9 +139,12 @@ export default function SupportLocationAssignRequestScreen() {
 
     try {
       await assignSupportRequestToLocation(session.accessToken, selectedRequestId, id);
+      showToast({ message: 'Support request assigned.', type: 'success' });
       router.replace(detailRoute);
     } catch (assignError) {
-      setError(getAuthErrorMessage(assignError));
+      const message = getAuthErrorMessage(assignError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

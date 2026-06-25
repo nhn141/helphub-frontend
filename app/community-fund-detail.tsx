@@ -38,6 +38,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 type FundSection = 'overview' | 'donations' | 'expenses' | 'members';
@@ -63,6 +64,7 @@ export default function CommunityFundDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const fundId = firstParam(params.id);
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [section, setSection] = useState<FundSection>('overview');
   const [fund, setFund] = useState<CommunityFundDetail | null>(null);
   const [donations, setDonations] = useState<Donation[]>([]);
@@ -145,7 +147,11 @@ export default function CommunityFundDetailScreen() {
 
   useFocusEffect(useCallback(() => void loadFund(), [loadFund]));
 
-  async function runAction(action: () => Promise<unknown>, after?: () => void) {
+  async function runAction(
+    action: () => Promise<unknown>,
+    after?: () => void,
+    successMessage?: string
+  ) {
     if (isActioning) {
       return;
     }
@@ -155,8 +161,13 @@ export default function CommunityFundDetailScreen() {
       await action();
       after?.();
       await loadFund();
+      if (successMessage) {
+        showToast({ message: successMessage, type: 'success' });
+      }
     } catch (actionFailure) {
-      setActionError(getAuthErrorMessage(actionFailure));
+      const message = getAuthErrorMessage(actionFailure);
+      setActionError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -164,7 +175,9 @@ export default function CommunityFundDetailScreen() {
 
   function saveFund() {
     if (!session?.accessToken || !fundId || !editName.trim()) {
-      setActionError('Fund name is required.');
+      const message = 'Fund name is required.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     void runAction(
@@ -173,14 +186,17 @@ export default function CommunityFundDetailScreen() {
         isActive: editActive,
         name: editName.trim(),
       }),
-      () => setShowEdit(false)
+      () => setShowEdit(false),
+      'Community fund updated.'
     );
   }
 
   function submitDonation() {
     const amount = Number(donationAmount);
     if (!session?.accessToken || !fundId || !Number.isFinite(amount) || amount < 1000) {
-      setActionError('Donation amount must be at least 1,000 VND.');
+      const message = 'Donation amount must be at least 1,000 VND.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     void runAction(
@@ -196,18 +212,23 @@ export default function CommunityFundDetailScreen() {
         setDonationNote('');
         setTransactionCode('');
         setShowDonationForm(false);
-      }
+      },
+      'Donation recorded.'
     );
   }
 
   function submitExpense() {
     const amount = Number(expenseAmount);
     if (!session?.accessToken || !fundId || !Number.isFinite(amount) || amount < 1000) {
-      setActionError('Expense amount must be at least 1,000 VND.');
+      const message = 'Expense amount must be at least 1,000 VND.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     if (!expenseDescription.trim()) {
-      setActionError('Expense description is required.');
+      const message = 'Expense description is required.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     void runAction(
@@ -220,7 +241,8 @@ export default function CommunityFundDetailScreen() {
         setExpenseAmount('');
         setExpenseDescription('');
         setShowExpenseForm(false);
-      }
+      },
+      'Expense recorded.'
     );
   }
 
@@ -228,12 +250,16 @@ export default function CommunityFundDetailScreen() {
     const normalizedEmail = memberUserEmail.trim().toLowerCase();
 
     if (!session?.accessToken || !fundId || !normalizedEmail) {
-      setActionError('User email is required.');
+      const message = 'User email is required.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setActionError('Please enter a valid user email.');
+      const message = 'Please enter a valid user email.';
+      setActionError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -243,7 +269,8 @@ export default function CommunityFundDetailScreen() {
         setMemberUserEmail('');
         setMemberRole('MEMBER');
         setShowMemberForm(false);
-      }
+      },
+      'Fund member added.'
     );
   }
 
@@ -253,7 +280,9 @@ export default function CommunityFundDetailScreen() {
     }
     const nextRole: CommunityFundMemberRole = member.role === 'MANAGER' ? 'MEMBER' : 'MANAGER';
     void runAction(() =>
-      updateCommunityFundMemberRole(session.accessToken, fundId, member.userId, nextRole)
+      updateCommunityFundMemberRole(session.accessToken, fundId, member.userId, nextRole),
+      undefined,
+      'Member role updated.'
     );
   }
 
@@ -267,7 +296,9 @@ export default function CommunityFundDetailScreen() {
         style: 'destructive',
         text: 'Remove',
         onPress: () => void runAction(() =>
-          removeCommunityFundMember(session.accessToken, fundId, member.userId)
+          removeCommunityFundMember(session.accessToken, fundId, member.userId),
+          undefined,
+          'Fund member removed.'
         ),
       },
     ]);

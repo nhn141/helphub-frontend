@@ -19,6 +19,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 const statusOptions = [
@@ -34,6 +35,7 @@ export default function SupportLocationStatusScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session } = useAuth();
+  const { showToast } = useToast();
   const [location, setLocation] = useState<SupportLocationDetail | null>(null);
   const [status, setStatus] = useState('ACTIVE');
   const [error, setError] = useState('');
@@ -52,7 +54,9 @@ export default function SupportLocationStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing support location.');
+      const message = 'Missing support location.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -68,7 +72,7 @@ export default function SupportLocationStatusScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, session?.accessToken]);
+  }, [id, session?.accessToken, showToast]);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,7 +87,9 @@ export default function SupportLocationStatusScreen() {
     }
 
     if (!id) {
-      setError('Missing support location.');
+      const message = 'Missing support location.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -95,9 +101,12 @@ export default function SupportLocationStatusScreen() {
         isActive: status === 'ACTIVE',
       });
 
+      showToast({ message: 'Support location status updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (statusError) {
-      setError(getAuthErrorMessage(statusError));
+      const message = getAuthErrorMessage(statusError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

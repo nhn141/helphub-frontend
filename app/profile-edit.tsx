@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -18,12 +18,14 @@ import {
   pickImageFromLibrary,
   uploadImageAndCreateMediaRecord,
 } from '@/components/media/media-api';
+import { useToast } from '@/components/ui/toast';
 import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 export default function ProfileEditScreen() {
   const router = useRouter();
   const { session, user, updateProfile } = useAuth();
+  const { showToast } = useToast();
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [selectedAvatar, setSelectedAvatar] = useState<Awaited<ReturnType<typeof pickImageFromLibrary>>>(null);
@@ -65,11 +67,12 @@ export default function ProfileEditScreen() {
 
       if (image) {
         setSelectedAvatar(image);
+        showToast({ message: 'Avatar image selected.', type: 'success' });
       }
     } catch (pickError: any) {
       const message = pickError?.message ?? 'Could not choose avatar image.';
       setError(message);
-      Alert.alert('Avatar image', message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsPickingImage(false);
     }
@@ -85,7 +88,9 @@ export default function ProfileEditScreen() {
     const normalizedPhone = phone.trim();
 
     if (!normalizedFullName) {
-      setError('Full name is required.');
+      const message = 'Full name is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -110,9 +115,12 @@ export default function ProfileEditScreen() {
         phone: normalizedPhone || null,
       });
 
+      showToast({ message: 'Profile updated.', type: 'success' });
       router.replace('/(tabs)/profile');
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : getAuthErrorMessage(saveError));
+      const message = saveError instanceof Error ? saveError.message : getAuthErrorMessage(saveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSaving(false);
     }

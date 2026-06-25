@@ -24,6 +24,7 @@ import {
   RequestSection,
   RequestStatusBadge,
 } from '@/components/support-request/request-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -34,6 +35,7 @@ export default function SupportRequestAssignLocationScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session } = useAuth();
+  const { showToast } = useToast();
   const [requestDetail, setRequestDetail] = useState<SupportRequestDetail | null>(null);
   const [locations, setLocations] = useState<SupportLocationSummary[]>([]);
   const [supportLocationId, setSupportLocationId] = useState('');
@@ -102,7 +104,9 @@ export default function SupportRequestAssignLocationScreen() {
     }
 
     if (!id || !supportLocationId) {
-      setError('Choose an active support location before assigning.');
+      const message = 'Choose an active support location before assigning.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -111,9 +115,12 @@ export default function SupportRequestAssignLocationScreen() {
 
     try {
       await assignSupportRequestToLocation(session.accessToken, id, supportLocationId);
+      showToast({ message: 'Support location assigned.', type: 'success' });
       router.replace(detailRoute);
     } catch (assignError) {
-      setError(getAuthErrorMessage(assignError));
+      const message = getAuthErrorMessage(assignError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

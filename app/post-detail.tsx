@@ -35,12 +35,14 @@ import {
   PostStatusBadge,
 } from '@/components/post/post-ui';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function PostDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, user } = useAuth();
+  const { showToast } = useToast();
 
   // Post data
   const [post, setPost] = useState<PostDetail | null>(null);
@@ -133,10 +135,10 @@ export default function PostDetailScreen() {
         }
         fetchReactions();
       } catch (err: any) {
-        Alert.alert('Reaction Error', err?.message ?? 'Could not update reaction.');
+        showToast({ message: err?.message ?? 'Could not update reaction.', type: 'error' });
       }
     },
-    [session?.accessToken, id, myReaction, fetchReactions],
+    [session?.accessToken, id, myReaction, fetchReactions, showToast],
   );
 
   const handleSubmitComment = useCallback(async () => {
@@ -147,12 +149,13 @@ export default function PostDetailScreen() {
       await createComment(session.accessToken, id, { content: commentText.trim() });
       setCommentText('');
       fetchComments();
+      showToast({ message: 'Comment posted.', type: 'success' });
     } catch (err: any) {
-      Alert.alert('Comment Error', err?.message ?? 'Could not post comment.');
+      showToast({ message: err?.message ?? 'Could not post comment.', type: 'error' });
     } finally {
       setCommentLoading(false);
     }
-  }, [session?.accessToken, id, commentText, fetchComments]);
+  }, [session?.accessToken, id, commentText, fetchComments, showToast]);
 
   const handleDeleteComment = useCallback(
     async (commentId: string) => {
@@ -167,14 +170,15 @@ export default function PostDetailScreen() {
             try {
               await deleteComment(session.accessToken!, commentId);
               fetchComments();
+              showToast({ message: 'Comment deleted.', type: 'success' });
             } catch (err: any) {
-              Alert.alert('Error', err?.message ?? 'Could not delete comment.');
+              showToast({ message: err?.message ?? 'Could not delete comment.', type: 'error' });
             }
           },
         },
       ]);
     },
-    [session?.accessToken, fetchComments],
+    [session?.accessToken, fetchComments, showToast],
   );
 
   const handleDeletePost = () => {

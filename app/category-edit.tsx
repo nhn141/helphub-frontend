@@ -17,6 +17,7 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -27,6 +28,7 @@ export default function CategoryEditScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session } = useAuth();
+  const { showToast } = useToast();
 
   const [category, setCategory] = useState<CategoryDetail | null>(null);
   const [name, setName] = useState('');
@@ -84,17 +86,23 @@ export default function CategoryEditScreen() {
     }
 
     if (!id) {
-      setError('Missing category ID.');
+      const message = 'Missing category ID.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!name.trim()) {
-      setError('Category name is required.');
+      const message = 'Category name is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!code.trim()) {
-      setError('Category code is required.');
+      const message = 'Category code is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -109,9 +117,12 @@ export default function CategoryEditScreen() {
         iconUrl: iconUrl.trim() || null,
       });
 
+      showToast({ message: 'Category updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (saveError) {
-      setError(getAuthErrorMessage(saveError));
+      const message = getAuthErrorMessage(saveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

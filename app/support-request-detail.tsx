@@ -44,6 +44,7 @@ import {
   RequestScreen,
   RequestStatusBadge,
 } from '@/components/support-request/request-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -55,6 +56,7 @@ export default function SupportRequestDetailScreen() {
   const id = getStringParam(params.id);
   const from = getStringParam(params.from);
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [requestDetail, setRequestDetail] = useState<SupportRequestDetail | null>(null);
   const [volunteerAssignments, setVolunteerAssignments] = useState<VolunteerAssignment[]>([]);
   const [myVolunteerAssignment, setMyVolunteerAssignment] = useState<VolunteerAssignment | null>(null);
@@ -210,8 +212,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await approveSupportRequest(session.accessToken, id);
       await loadRequestDetail();
+      showToast({ message: 'Support request approved.', type: 'success' });
     } catch (err) {
-      setError(getAuthErrorMessage(err));
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -268,8 +273,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await applyToSupportRequest(session.accessToken, id);
       await loadRequestDetail();
+      showToast({ message: 'Volunteer application submitted.', type: 'success' });
     } catch (applyError) {
-      setAssignmentError(getAuthErrorMessage(applyError));
+      const message = getAuthErrorMessage(applyError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -284,8 +292,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await cancelMyVolunteerAssignment(session.accessToken, id);
       await loadRequestDetail();
+      showToast({ message: 'Volunteer assignment cancelled.', type: 'success' });
     } catch (cancelError) {
-      setAssignmentError(getAuthErrorMessage(cancelError));
+      const message = getAuthErrorMessage(cancelError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -300,8 +311,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await completeMyVolunteerAssignment(session.accessToken, id);
       await loadRequestDetail();
+      showToast({ message: 'Volunteer assignment completed.', type: 'success' });
     } catch (completeError) {
-      setAssignmentError(getAuthErrorMessage(completeError));
+      const message = getAuthErrorMessage(completeError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -316,8 +330,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await approveVolunteerAssignment(session.accessToken, id, volunteerId);
       await loadRequestDetail();
+      showToast({ message: 'Volunteer application approved.', type: 'success' });
     } catch (approveError) {
-      setAssignmentError(getAuthErrorMessage(approveError));
+      const message = getAuthErrorMessage(approveError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -329,7 +346,9 @@ export default function SupportRequestDetailScreen() {
     const reason = volunteerRejectionReason.trim();
 
     if (!reason) {
-      setAssignmentError('Rejection reason is required.');
+      const message = 'Rejection reason is required.';
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -341,8 +360,11 @@ export default function SupportRequestDetailScreen() {
       setRejectingVolunteerId(null);
       setVolunteerRejectionReason('');
       await loadRequestDetail();
+      showToast({ message: 'Volunteer application rejected.', type: 'success' });
     } catch (rejectError) {
-      setAssignmentError(getAuthErrorMessage(rejectError));
+      const message = getAuthErrorMessage(rejectError);
+      setAssignmentError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -399,11 +421,15 @@ export default function SupportRequestDetailScreen() {
     if (!session?.accessToken || !id) return;
     const qty = parseFloat(needFormQty);
     if (!needFormName.trim()) {
-      setNeedFormError('Name of support needs cannot be blank.');
+      const message = 'Name of support needs cannot be blank.';
+      setNeedFormError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     if (isNaN(qty) || qty <= 0) {
-      setNeedFormError('The number must be greater than 0.');
+      const message = 'The number must be greater than 0.';
+      setNeedFormError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     const payload: SupportNeedPayload = {
@@ -415,6 +441,7 @@ export default function SupportRequestDetailScreen() {
     setIsSavingNeed(true);
     setNeedFormError('');
     try {
+      const isEditingNeed = Boolean(editingNeedId);
       if (editingNeedId) {
         await updateSupportNeed(session.accessToken, editingNeedId, payload);
       } else {
@@ -423,8 +450,14 @@ export default function SupportRequestDetailScreen() {
       setShowNeedForm(false);
       setEditingNeedId(null);
       await loadSupportNeeds();
+      showToast({
+        message: isEditingNeed ? 'Support need updated.' : 'Support need added.',
+        type: 'success',
+      });
     } catch (err) {
-      setNeedFormError(getAuthErrorMessage(err));
+      const message = getAuthErrorMessage(err);
+      setNeedFormError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSavingNeed(false);
     }
@@ -436,8 +469,11 @@ export default function SupportRequestDetailScreen() {
     try {
       await deleteSupportNeed(session.accessToken, needId);
       await loadSupportNeeds();
+      showToast({ message: 'Support need deleted.', type: 'success' });
     } catch (err) {
-      setNeedsError(getAuthErrorMessage(err));
+      const message = getAuthErrorMessage(err);
+      setNeedsError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -475,7 +511,9 @@ export default function SupportRequestDetailScreen() {
     if (!session?.accessToken) return;
     const qty = parseFloat(contribQty);
     if (isNaN(qty) || qty <= 0) {
-      setContribError('The number must be greater than 0.');
+      const message = 'The number must be greater than 0.';
+      setContribError(message);
+      showToast({ message, type: 'error' });
       return;
     }
     const payload: ContributionPayload = { quantity: qty, note: contribNote.trim() || undefined };
@@ -488,8 +526,11 @@ export default function SupportRequestDetailScreen() {
       const data = await getContributions(session.accessToken, needId);
       setContributions((prev) => ({ ...prev, [needId]: data }));
       await loadSupportNeeds();
+      showToast({ message: 'Donation recorded.', type: 'success' });
     } catch (err) {
-      setContribError(getAuthErrorMessage(err));
+      const message = getAuthErrorMessage(err);
+      setContribError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsContributing(false);
     }

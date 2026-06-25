@@ -8,12 +8,14 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { canManageUsers, getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function ProfileTabScreen() {
   const { isAuthenticated, logout, user } = useAuth();
   const { role } = useDemoRole();
+  const { showToast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const displayName = user?.fullName ?? 'Guest User';
   const displayEmail = user?.email ?? 'guest@helphub.app';
@@ -34,6 +36,7 @@ export default function ProfileTabScreen() {
 
     try {
       await logout();
+      showToast({ message: 'Logged out successfully.', type: 'success' });
       router.replace('/login' as never);
     } finally {
       setIsLoggingOut(false);

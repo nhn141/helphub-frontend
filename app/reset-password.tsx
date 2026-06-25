@@ -16,6 +16,7 @@ import {
   authPalette,
   getPasswordStrength,
 } from '@/components/auth/auth-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -24,6 +25,7 @@ function getStringParam(value: string | string[] | undefined) {
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const params = useLocalSearchParams();
   const email = getStringParam(params.email)?.trim().toLowerCase() ?? '';
   const otp = getStringParam(params.otp) ?? '';
@@ -35,27 +37,37 @@ export default function ResetPasswordScreen() {
 
   async function handleResetPassword() {
     if (!email || !otp) {
-      setError('Reset information is missing. Please request a new code.');
+      const message = 'Reset information is missing. Please request a new code.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!newPassword || !confirmPassword) {
-      setError('Please enter and confirm your new password.');
+      const message = 'Please enter and confirm your new password.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
+      const message = 'Password must be at least 8 characters.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (strength.score < 3) {
-      setError('Please choose a stronger password before resetting.');
+      const message = 'Please choose a stronger password before resetting.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Password confirmation does not match.');
+      const message = 'Password confirmation does not match.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -64,12 +76,15 @@ export default function ResetPasswordScreen() {
 
     try {
       const response = await resetPassword({ email, newPassword, otp });
+      showToast({ message: response.message, type: 'success' });
       router.replace({
         pathname: '/login',
         params: { email, notice: response.message },
       });
     } catch (resetError) {
-      setError(getAuthErrorMessage(resetError));
+      const message = getAuthErrorMessage(resetError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

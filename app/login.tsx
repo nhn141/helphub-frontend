@@ -17,11 +17,13 @@ import {
   AuthTextLink,
   authPalette,
 } from '@/components/auth/auth-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { showToast } = useToast();
   const initialEmail = Array.isArray(params.email) ? params.email[0] : params.email;
   const notice = Array.isArray(params.notice) ? params.notice[0] : params.notice;
   const { isAuthenticated, isLoading, login } = useAuth();
@@ -40,7 +42,9 @@ export default function LoginScreen() {
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail || !password) {
-      setError('Please enter your email and password.');
+      const message = 'Please enter your email and password.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -52,9 +56,12 @@ export default function LoginScreen() {
         email: normalizedEmail,
         password,
       });
+      showToast({ message: 'Logged in successfully.', type: 'success' });
       router.replace('/(tabs)');
     } catch (loginError) {
-      setError(getAuthErrorMessage(loginError));
+      const message = getAuthErrorMessage(loginError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

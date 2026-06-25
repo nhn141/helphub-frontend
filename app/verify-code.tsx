@@ -20,6 +20,7 @@ import {
   AuthTextLink,
   authPalette,
 } from '@/components/auth/auth-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 type OtpPurpose = 'email-verification' | 'password-reset';
@@ -30,6 +31,7 @@ function getStringParam(value: string | string[] | undefined) {
 
 export default function VerifyCodeScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const params = useLocalSearchParams();
   const email = getStringParam(params.email)?.trim().toLowerCase() ?? '';
   const purpose: OtpPurpose =
@@ -51,12 +53,16 @@ export default function VerifyCodeScreen() {
 
   async function handleVerify() {
     if (!email) {
-      setError('Email address is missing. Please restart this flow.');
+      const message = 'Email address is missing. Please restart this flow.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (code.length !== 6) {
-      setError('Please enter the 6-digit verification code.');
+      const message = 'Please enter the 6-digit verification code.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -67,18 +73,22 @@ export default function VerifyCodeScreen() {
     try {
       if (isEmailVerification) {
         const response = await verifyEmail({ email, otp: code });
+        showToast({ message: response.message, type: 'success' });
         router.replace({
           pathname: '/login',
           params: { email, notice: response.message },
         });
       } else {
+        showToast({ message: 'Code verified. Create a new password.', type: 'success' });
         router.push({
           pathname: '/reset-password',
           params: { email, otp: code },
         });
       }
     } catch (verifyError) {
-      setError(getAuthErrorMessage(verifyError));
+      const message = getAuthErrorMessage(verifyError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -87,7 +97,9 @@ export default function VerifyCodeScreen() {
   async function handleResendCode() {
     if (!email || isResending) {
       if (!email) {
-        setError('Email address is missing. Please restart this flow.');
+        const message = 'Email address is missing. Please restart this flow.';
+        setError(message);
+        showToast({ message, type: 'error' });
       }
       return;
     }
@@ -101,8 +113,11 @@ export default function VerifyCodeScreen() {
         ? await resendEmailOtp({ email })
         : await forgotPassword({ email });
       setNotice(response.message);
+      showToast({ message: response.message, type: 'success' });
     } catch (resendError) {
-      setError(getAuthErrorMessage(resendError));
+      const message = getAuthErrorMessage(resendError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsResending(false);
     }

@@ -15,6 +15,7 @@ import {
 } from '@/components/auth/auth-ui';
 import { Fonts } from '@/constants/theme';
 import { forgotPassword, getAuthErrorMessage } from '@/components/auth/auth-api';
+import { useToast } from '@/components/ui/toast';
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -22,6 +23,7 @@ function isValidEmail(email: string) {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,12 +32,16 @@ export default function ForgotPasswordScreen() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setError('Please enter your email address.');
+      const message = 'Please enter your email address.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setError('Please enter a valid email address.');
+      const message = 'Please enter a valid email address.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -44,6 +50,7 @@ export default function ForgotPasswordScreen() {
 
     try {
       const response = await forgotPassword({ email: normalizedEmail });
+      showToast({ message: response.message, type: 'success' });
       router.push({
         pathname: '/verify-code',
         params: {
@@ -53,7 +60,9 @@ export default function ForgotPasswordScreen() {
         },
       });
     } catch (requestError) {
-      setError(getAuthErrorMessage(requestError));
+      const message = getAuthErrorMessage(requestError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

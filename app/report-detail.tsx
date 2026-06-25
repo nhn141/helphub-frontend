@@ -24,6 +24,7 @@ import {
   reviewReport,
   type ReportDetail,
 } from '@/components/report/report-api';
+import { useToast } from '@/components/ui/toast';
 import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
@@ -35,6 +36,7 @@ export default function ReportDetailScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { isLoading: isAuthLoading, session, user } = useAuth();
+  const { showToast } = useToast();
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [resolutionNote, setResolutionNote] = useState('');
@@ -101,7 +103,9 @@ export default function ReportDetailScreen() {
     const note = reviewNote.trim();
 
     if (!session?.accessToken || !id || !note) {
-      setError('Review note is required.');
+      const message = 'Review note is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -115,8 +119,11 @@ export default function ReportDetailScreen() {
       setReport(updated);
       setResolutionNote(updated.resolutionNote ?? note);
       setReviewNote('');
+      showToast({ message: 'Report marked as reviewed.', type: 'success' });
     } catch (reviewError) {
-      setError(getAuthErrorMessage(reviewError));
+      const message = getAuthErrorMessage(reviewError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }
@@ -131,12 +138,16 @@ export default function ReportDetailScreen() {
     }
 
     if (!note) {
-      setError('Resolution note is required.');
+      const message = 'Resolution note is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (report.targetType === 'SUPPORT_REQUEST' && !rejectionReason) {
-      setError('Support request rejection reason is required.');
+      const message = 'Support request rejection reason is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -151,8 +162,11 @@ export default function ReportDetailScreen() {
             report.targetType === 'SUPPORT_REQUEST' ? rejectionReason : undefined,
         })
       );
+      showToast({ message: 'Report resolved.', type: 'success' });
     } catch (resolveError) {
-      setError(getAuthErrorMessage(resolveError));
+      const message = getAuthErrorMessage(resolveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsActioning(false);
     }

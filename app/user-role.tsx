@@ -20,6 +20,7 @@ import {
   type UserDetail,
   type UserRole,
 } from '@/components/management/user-api';
+import { useToast } from '@/components/ui/toast';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
@@ -38,6 +39,7 @@ export default function UserRoleScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { isLoading: isAuthLoading, session, user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [targetUser, setTargetUser] = useState<UserDetail | null>(null);
   const [role, setRole] = useState<UserRole>('REQUESTER');
   const [isLoading, setIsLoading] = useState(false);
@@ -96,17 +98,23 @@ export default function UserRoleScreen() {
     }
 
     if (!id || !targetUser) {
-      setError('Missing user ID.');
+      const message = 'Missing user ID.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (role === targetUser.role) {
-      setError('User already has this role.');
+      const message = 'User already has this role.';
+      setError(message);
+      showToast({ message, type: 'info' });
       return;
     }
 
     if (targetUser.id === currentUser?.id && role !== 'ADMIN') {
-      setError('Admin cannot change their own role.');
+      const message = 'Admin cannot change their own role.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -115,9 +123,12 @@ export default function UserRoleScreen() {
 
     try {
       await updateUserRole(session.accessToken, id, { role });
+      showToast({ message: 'User role updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (roleError) {
-      setError(getAuthErrorMessage(roleError));
+      const message = getAuthErrorMessage(roleError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

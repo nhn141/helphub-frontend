@@ -19,6 +19,7 @@ import {
 } from '@/components/management/management-ui';
 import { LocationPicker } from '@/components/map/location-picker';
 import { isValidCoordinate, type Coordinates } from '@/components/map/map-utils';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -29,6 +30,7 @@ export default function SupportLocationEditScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { session } = useAuth();
+  const { showToast } = useToast();
   const [location, setLocation] = useState<SupportLocationDetail | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -97,17 +99,23 @@ export default function SupportLocationEditScreen() {
     }
 
     if (!id) {
-      setError('Missing support location.');
+      const message = 'Missing support location.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!name.trim() || !description.trim() || !address.trim()) {
-      setError('Name, description, and address are required.');
+      const message = 'Name, description, and address are required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!selectedCoordinate) {
-      setError('Search the address or choose a point on the map before saving.');
+      const message = 'Search the address or choose a point on the map before saving.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -126,9 +134,12 @@ export default function SupportLocationEditScreen() {
         name: name.trim(),
       });
 
+      showToast({ message: 'Support location updated.', type: 'success' });
       router.replace(detailRoute);
     } catch (saveError) {
-      setError(getAuthErrorMessage(saveError));
+      const message = getAuthErrorMessage(saveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

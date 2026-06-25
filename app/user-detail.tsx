@@ -21,6 +21,7 @@ import {
   getUserById,
   type UserDetail,
 } from '@/components/management/user-api';
+import { useToast } from '@/components/ui/toast';
 import { UserAvatar } from '@/components/user/user-avatar';
 import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
@@ -33,6 +34,7 @@ export default function UserDetailScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
   const { isLoading: isAuthLoading, session, user: currentUser } = useAuth();
+  const { showToast } = useToast();
   const [user, setUser] = useState<UserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -85,12 +87,15 @@ export default function UserDetailScreen() {
     setError('');
     try {
       const conversation = await createPrivateConversationByEmail(session.accessToken, user.email);
+      showToast({ message: 'Chat opened.', type: 'success' });
       router.push({
         pathname: '/(tabs)/social',
         params: { conversationId: conversation.id, view: 'chat' },
       });
     } catch (chatError) {
-      setError(getAuthErrorMessage(chatError));
+      const message = getAuthErrorMessage(chatError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsStartingChat(false);
     }

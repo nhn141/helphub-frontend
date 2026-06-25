@@ -35,6 +35,7 @@ import {
   useUnreadNotificationCount,
   type MessageNotificationMeta,
 } from '@/components/notification/notification-state';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 type DisplayNotification = {
@@ -143,6 +144,7 @@ export function NotificationBell() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { isAuthenticated, session } = useAuth();
+  const { showToast } = useToast();
   const notifications = useNotificationItems();
   const realtimeMessageMeta = useMessageNotificationMetaByMessageId();
   const unreadCount = useUnreadNotificationCount();
@@ -326,7 +328,9 @@ export function NotificationBell() {
     }
 
     if (updatedNotifications.size < unreadNotifications.length) {
-      setError('Could not update some notifications.');
+      const message = 'Could not update some notifications.';
+      setError(message);
+      showToast({ message, type: 'error' });
     }
   }
 
@@ -372,8 +376,11 @@ export function NotificationBell() {
         }))
       );
       setUnreadNotificationCount(0);
+      showToast({ message: 'Notifications marked as read.', type: 'success' });
     } catch (readError: any) {
-      setError(readError?.message ?? 'Could not update notifications.');
+      const message = readError?.message ?? 'Could not update notifications.';
+      setError(message);
+      showToast({ message, type: 'error' });
     }
   }
 

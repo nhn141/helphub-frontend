@@ -12,10 +12,12 @@ import {
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function CommunityFundCreateScreen() {
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +30,9 @@ export default function CommunityFundCreateScreen() {
     }
 
     if (!name.trim()) {
-      setError('Fund name is required.');
+      const message = 'Fund name is required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -40,9 +44,12 @@ export default function CommunityFundCreateScreen() {
         description: description.trim(),
         name: name.trim(),
       });
+      showToast({ message: 'Community fund created.', type: 'success' });
       router.replace({ pathname: '/community-fund-detail', params: { id: fund.id } } as never);
     } catch (saveError) {
-      setError(getAuthErrorMessage(saveError));
+      const message = getAuthErrorMessage(saveError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSaving(false);
     }

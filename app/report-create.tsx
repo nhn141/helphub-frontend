@@ -18,6 +18,7 @@ import {
   getReportTargetLabel,
   type ReportTargetType,
 } from '@/components/report/report-api';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -35,6 +36,7 @@ function getTargetType(value: string | undefined): ReportTargetType | null {
 export default function ReportCreateScreen() {
   const params = useLocalSearchParams();
   const { session } = useAuth();
+  const { showToast } = useToast();
   const targetType = getTargetType(getStringParam(params.targetType));
   const targetId = getStringParam(params.targetId);
   const targetName = getStringParam(params.targetName);
@@ -56,12 +58,16 @@ export default function ReportCreateScreen() {
     }
 
     if (!targetType || !targetId) {
-      setError('Missing report target.');
+      const message = 'Missing report target.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!normalizedReason) {
-      setError('Please explain why this should be reviewed.');
+      const message = 'Please explain why this should be reviewed.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -75,6 +81,7 @@ export default function ReportCreateScreen() {
         targetType,
       });
 
+      showToast({ message: 'Report submitted.', type: 'success' });
       Alert.alert('Report submitted', 'An admin can now review this report.', [
         {
           text: 'View my reports',
@@ -82,7 +89,9 @@ export default function ReportCreateScreen() {
         },
       ]);
     } catch (submitError) {
-      setError(getAuthErrorMessage(submitError));
+      const message = getAuthErrorMessage(submitError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

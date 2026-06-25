@@ -21,12 +21,14 @@ import {
   PostVisibilityBadge,
 } from '@/components/post/post-ui';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 export default function PostDeleteScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
+  const { showToast } = useToast();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,9 +70,10 @@ export default function PostDeleteScreen() {
             setDeleting(true);
             try {
               await deletePost(session.accessToken!, id);
+              showToast({ message: 'Post deleted.', type: 'success' });
               router.push('/post-my');
             } catch (err: any) {
-              Alert.alert('Error', err?.message ?? 'Failed to delete post.');
+              showToast({ message: err?.message ?? 'Failed to delete post.', type: 'error' });
             } finally {
               setDeleting(false);
             }
@@ -78,7 +81,7 @@ export default function PostDeleteScreen() {
         },
       ],
     );
-  }, [session?.accessToken, id, router]);
+  }, [session?.accessToken, id, router, showToast]);
 
   if (loading) {
     return (

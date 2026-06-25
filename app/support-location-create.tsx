@@ -14,11 +14,13 @@ import {
 } from '@/components/management/management-ui';
 import { LocationPicker } from '@/components/map/location-picker';
 import type { Coordinates } from '@/components/map/map-utils';
+import { useToast } from '@/components/ui/toast';
 import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function SupportLocationCreateScreen() {
   const { session, user } = useAuth();
+  const { showToast } = useToast();
   const canCreateLocation = Boolean(user?.role && canManageSupportLocations(user.role));
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -37,17 +39,23 @@ export default function SupportLocationCreateScreen() {
     }
 
     if (!canCreateLocation) {
-      setError('Only collaborators and admins can create support locations.');
+      const message = 'Only collaborators and admins can create support locations.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!name.trim() || !description.trim() || !address.trim()) {
-      setError('Name, description, and address are required.');
+      const message = 'Name, description, and address are required.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
     if (!selectedCoordinate) {
-      setError('Search the address or choose a point on the map before creating.');
+      const message = 'Search the address or choose a point on the map before creating.';
+      setError(message);
+      showToast({ message, type: 'error' });
       return;
     }
 
@@ -66,12 +74,15 @@ export default function SupportLocationCreateScreen() {
         name: name.trim(),
       });
 
+      showToast({ message: 'Support location created.', type: 'success' });
       router.replace({
         pathname: '/support-location-detail',
         params: { id: createdLocation.id },
       });
     } catch (createError) {
-      setError(getAuthErrorMessage(createError));
+      const message = getAuthErrorMessage(createError);
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }

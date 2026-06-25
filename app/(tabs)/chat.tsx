@@ -3,7 +3,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -47,6 +46,7 @@ import { OpenableImage } from '@/components/media/image-viewer';
 import { DashboardTopHeader } from '@/components/dashboard/tab-ui';
 import { SectionTabs } from '@/components/dashboard/section-tabs';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { useToast } from '@/components/ui/toast';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -141,6 +141,7 @@ export default function ChatTabScreen() {
   const requestedConversationId = getStringParam(params.conversationId);
   const { width } = useWindowDimensions();
   const { isAuthenticated, session, user } = useAuth();
+  const { showToast } = useToast();
   const isWide = width >= 760;
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -555,7 +556,7 @@ export default function ChatTabScreen() {
     } catch (pickError: any) {
       const message = pickError?.message ?? 'Could not choose an image.';
       setError(message);
-      Alert.alert('Image picker', message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsPickingMessageImage(false);
     }
@@ -616,8 +617,9 @@ export default function ChatTabScreen() {
         }))
       );
     } catch (sendError: any) {
-      setError(sendError?.message ?? 'Could not send message.');
-      Alert.alert('Message', sendError?.message ?? 'Could not send message.');
+      const message = sendError?.message ?? 'Could not send message.';
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsSending(false);
     }
@@ -645,8 +647,11 @@ export default function ChatTabScreen() {
       ]);
       setNewChatEmail('');
       setSelectedConversationId(conversation.id);
+      showToast({ message: 'Chat started.', type: 'success' });
     } catch (createError: any) {
-      setError(createError?.message ?? 'Could not start chat.');
+      const message = createError?.message ?? 'Could not start chat.';
+      setError(message);
+      showToast({ message, type: 'error' });
     } finally {
       setIsCreatingChat(false);
     }
