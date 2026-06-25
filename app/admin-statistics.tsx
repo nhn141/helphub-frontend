@@ -247,7 +247,6 @@ function UsersStatistics({
         <ManagementCard>
           <View style={styles.chartHeader}>
             <Text style={styles.cardTitle}>New users over time</Text>
-            <Text style={styles.demoPill}>Demo data</Text>
           </View>
           <View style={styles.barChartShell}>
             <BarChart
@@ -461,15 +460,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     justifyContent: 'space-between',
-  },
-  demoPill: {
-    backgroundColor: '#FFF1D8',
-    borderRadius: 999,
-    color: '#9A6500',
-    fontFamily: Fonts.rounded,
-    fontSize: 11,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
   },
   errorText: {
     color: '#AE3F3A',
