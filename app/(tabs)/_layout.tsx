@@ -5,7 +5,6 @@ import { Feather } from '@expo/vector-icons';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { connectChatRealtime, getUnreadNotificationCount } from '@/components/chat/chat-api';
-import { useDemoRole } from '@/components/demo-role/demo-role-provider';
 import { HapticTab } from '@/components/haptic-tab';
 import {
   clearMessageNotificationMeta,
@@ -14,13 +13,10 @@ import {
   upsertMessageNotificationMeta,
   upsertNotificationItem,
 } from '@/components/notification/notification-state';
-import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function TabLayout() {
-  const { role } = useDemoRole();
   const { session } = useAuth();
-  const supportTabTitle = canManageSupportLocations(role) ? 'Support' : 'Requests';
 
   useEffect(() => {
     if (!session?.accessToken) {
@@ -106,7 +102,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="support"
         options={{
-          title: supportTabTitle,
+          title: 'Request',
           tabBarIcon: ({ color }) => <Feather size={20} name="clipboard" color={color} />,
         }}
       />
@@ -127,23 +123,19 @@ export default function TabLayout() {
       <Tabs.Screen
         name="funds"
         options={{
-          title: 'Funds',
-          tabBarIcon: ({ color }) => <Feather size={20} name="dollar-sign" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="system"
         options={{
-          title: 'System',
-          href: role === 'ADMIN' ? undefined : null,
-          tabBarIcon: ({ color }) => <Feather size={20} name="settings" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <Feather size={20} name="user" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

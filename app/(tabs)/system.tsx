@@ -340,9 +340,7 @@ export default function SystemTabScreen() {
 
   if (!isAdmin && !isAuthLoading) {
     return (
-      <DashboardScreen
-        title="System"
-        rightSlot={<Badge label={user?.role ?? 'GUEST'} tone="slate" />}>
+      <DashboardScreen title="System">
         <SurfaceCard>
           <Text style={styles.restrictedTitle}>Admin only</Text>
           <Text style={styles.restrictedBody}>
@@ -354,9 +352,7 @@ export default function SystemTabScreen() {
   }
 
   return (
-    <DashboardScreen
-      title="System"
-      rightSlot={<Badge label={user?.role ?? 'ADMIN'} tone={getRoleTone('ADMIN')} />}>
+    <DashboardScreen title="System">
       <SectionTabs
         items={[
           {

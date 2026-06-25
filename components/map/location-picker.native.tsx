@@ -1,5 +1,4 @@
 import { Feather } from '@expo/vector-icons';
-import * as Location from 'expo-location';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { Marker, type MapPressEvent } from 'react-native-maps';
@@ -12,6 +11,7 @@ import {
   reverseGeocodeCoordinates,
   type Coordinates,
 } from '@/components/map/map-utils';
+import { getDeviceLocation, isLocationPermissionError } from '@/components/map/device-location';
 import { Fonts } from '@/constants/theme';
 
 type LocationPickerProps = {
@@ -105,23 +105,20 @@ export function LocationPicker({
     setMessage('');
 
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
+      const position = await getDeviceLocation();
+      await applyMapCoordinate(position);
 
-      if (!permission.granted) {
-        setMessage('Location permission was not granted.');
-        return;
+      if (position.source === 'last-known') {
+        setMessage('Using your last known location. Try again after GPS is ready.');
       }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      await applyMapCoordinate({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-    } catch {
-      setMessage('Could not read your current location.');
+    } catch (locationError) {
+      setMessage(
+        isLocationPermissionError(locationError)
+          ? 'Location permission was not granted.'
+          : locationError instanceof Error
+            ? locationError.message
+            : 'Could not read your current location.'
+      );
     } finally {
       setIsLocating(false);
     }

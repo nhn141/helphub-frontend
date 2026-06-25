@@ -133,12 +133,12 @@ export async function getCommunityFundMembers(accessToken: string, fundId: strin
 export async function addCommunityFundMember(
   accessToken: string,
   fundId: string,
-  userId: string,
+  userEmail: string,
   role: CommunityFundMemberRole
 ) {
   const response = await apiRequest<ApiEnvelope<CommunityFundMember>>(
     `/community-funds/${fundId}/members`,
-    { accessToken, body: JSON.stringify({ userId, role }), method: 'POST' }
+    { accessToken, body: JSON.stringify({ role, userEmail: userEmail.trim().toLowerCase() }), method: 'POST' }
   );
   return response.data;
 }

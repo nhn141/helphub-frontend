@@ -15,7 +15,7 @@ import {
   getSupportLocations,
   type SupportLocationSummary,
 } from '@/components/management/support-location-api';
-import { canManageSupportLocations, getRoleTone } from '@/constants/role-access';
+import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
@@ -95,9 +95,7 @@ export default function SupportLocationsTabScreen() {
 
   if (!canManageLocations) {
     return (
-      <DashboardScreen
-        title="Support Locations"
-        rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+      <DashboardScreen title="Support Locations">
         <SurfaceCard>
           <Text style={styles.restrictedTitle}>Admin or collaborator only</Text>
           <Text style={styles.restrictedBody}>
@@ -109,9 +107,7 @@ export default function SupportLocationsTabScreen() {
   }
 
   return (
-    <DashboardScreen
-      title="Support"
-      rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+    <DashboardScreen title="Request">
       <SectionTabs
         items={[
           {

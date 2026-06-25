@@ -6,9 +6,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View, type GestureResponderEve
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useDemoRole } from '@/components/demo-role/demo-role-provider';
-import { Badge, DashboardScreen } from '@/components/dashboard/tab-ui';
+import { DashboardScreen } from '@/components/dashboard/tab-ui';
 import { SectionTabs } from '@/components/dashboard/section-tabs';
-import { canViewVolunteerPosts, getRoleTone } from '@/constants/role-access';
+import { canViewVolunteerPosts } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 import { OpenableImage } from '@/components/media/image-viewer';
 import { UserAvatar } from '@/components/user/user-avatar';
@@ -236,9 +236,7 @@ export default function PostsTabScreen() {
   };
 
   return (
-    <DashboardScreen
-      title="Social"
-      rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+    <DashboardScreen title="Social">
       <SectionTabs
         items={[
           {

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -71,11 +71,13 @@ export default function CommunityFundCreateScreen() {
                 value={description}
               />
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              <ManagementButton
-                disabled={isSaving}
-                label={isSaving ? 'Creating...' : 'Create fund'}
-                onPress={handleCreate}
-              />
+              <View style={styles.formButtonGap}>
+                <ManagementButton
+                  disabled={isSaving}
+                  label={isSaving ? 'Creating...' : 'Create fund'}
+                  onPress={handleCreate}
+                />
+              </View>
             </>
           )}
         </ManagementCard>
@@ -86,4 +88,5 @@ export default function CommunityFundCreateScreen() {
 
 const styles = StyleSheet.create({
   errorText: { color: '#AE3F3A', fontFamily: Fonts.rounded, fontSize: 14, lineHeight: 21, marginBottom: 12 },
+  formButtonGap: { marginTop: 16 },
 });

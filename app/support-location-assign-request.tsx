@@ -25,6 +25,7 @@ import {
   type SupportRequestDetail,
 } from '@/components/support-request/request-api';
 import { UserAvatar } from '@/components/user/user-avatar';
+import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -34,7 +35,8 @@ function getStringParam(value: string | string[] | undefined) {
 export default function SupportLocationAssignRequestScreen() {
   const params = useLocalSearchParams();
   const id = getStringParam(params.id);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const canAssignLocation = Boolean(user?.role && canManageSupportLocations(user.role));
   const [location, setLocation] = useState<SupportLocationDetail | null>(null);
   const [requests, setRequests] = useState<SupportRequestDetail[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState('');
@@ -50,6 +52,12 @@ export default function SupportLocationAssignRequestScreen() {
   const loadAssignmentData = useCallback(async () => {
     if (!session?.accessToken) {
       router.replace('/login' as never);
+      return;
+    }
+
+    if (!canAssignLocation) {
+      setLocation(null);
+      setRequests([]);
       return;
     }
 
@@ -93,7 +101,7 @@ export default function SupportLocationAssignRequestScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, session?.accessToken]);
+  }, [canAssignLocation, id, session?.accessToken]);
 
   useFocusEffect(
     useCallback(() => {
@@ -107,6 +115,11 @@ export default function SupportLocationAssignRequestScreen() {
   const handleAssign = async () => {
     if (!session?.accessToken) {
       router.replace('/login' as never);
+      return;
+    }
+
+    if (!canAssignLocation) {
+      setError('Only collaborators and admins can assign support locations.');
       return;
     }
 
@@ -127,6 +140,19 @@ export default function SupportLocationAssignRequestScreen() {
       setIsSubmitting(false);
     }
   };
+
+  if (!canAssignLocation) {
+    return (
+      <ManagementScreen title="Assign Request" onBackPress={() => router.back()}>
+        <ManagementCard>
+          <Text style={styles.emptyTitle}>Collaborator or admin only</Text>
+          <Text style={styles.helperText}>
+            Support location assignment is available for users who coordinate request routing.
+          </Text>
+        </ManagementCard>
+      </ManagementScreen>
+    );
+  }
 
   return (
     <ManagementScreen

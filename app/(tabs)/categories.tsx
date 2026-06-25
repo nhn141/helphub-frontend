@@ -8,7 +8,6 @@ import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Badge, DashboardScreen, SectionHeader, SurfaceCard } from '@/components/dashboard/tab-ui';
 import { getCategories, type CategorySummary } from '@/components/management/category-api';
-import { getRoleTone, type AppRole } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export function CategoryManagementContent() {
@@ -103,17 +102,8 @@ export function CategoryManagementContent() {
 }
 
 export default function CategoriesTabScreen() {
-  const { user } = useAuth();
-
   return (
-    <DashboardScreen
-      title="Categories"
-      rightSlot={
-        <Badge
-          label={user?.role ?? 'GUEST'}
-          tone={user?.role ? getRoleTone(user.role as AppRole) : 'slate'}
-        />
-      }>
+    <DashboardScreen title="Categories">
       <CategoryManagementContent />
     </DashboardScreen>
   );

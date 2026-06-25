@@ -1,10 +1,8 @@
 import { Feather } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
-import { FilterChip } from '@/components/dashboard/tab-ui';
+import { DashboardTopHeader, FilterChip } from '@/components/dashboard/tab-ui';
 import {
   getSupportLocations,
   type SupportLocationSummary,
@@ -32,6 +30,7 @@ import {
   type SupportMapItem,
   type SupportMapItemType,
 } from '@/components/map/map-utils';
+import { getDeviceLocation, isLocationPermissionError } from '@/components/map/device-location';
 import { SupportMap } from '@/components/map/support-map';
 import {
   getSupportRequests,
@@ -50,16 +49,23 @@ const radiusOptions: { label: string; value: number | null }[] = [
   { label: '25 km', value: 25 },
 ];
 
+function getStringParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default function MapTabScreen() {
+  const params = useLocalSearchParams();
+  const view = getStringParam(params.view);
   const { session } = useAuth();
   const [requests, setRequests] = useState<SupportRequestSummary[]>([]);
   const [locations, setLocations] = useState<SupportLocationSummary[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<MapFilter>('ALL');
+  const [filter, setFilter] = useState<MapFilter>(view === 'locations' ? 'LOCATION' : 'ALL');
   const [radiusFilterKm, setRadiusFilterKm] = useState<number | null>(null);
   const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('idle');
+  const [locationMessage, setLocationMessage] = useState('');
   const [routeCoordinates, setRouteCoordinates] = useState<Coordinates[]>([]);
   const [routeError, setRouteError] = useState('');
   const [isRouteLoading, setIsRouteLoading] = useState(false);
@@ -93,46 +99,24 @@ export default function MapTabScreen() {
 
   const requestUserLocation = useCallback(async () => {
     setLocationStatus('requesting');
-
-    if (Platform.OS === 'web') {
-      if (!('geolocation' in navigator)) {
-        setLocationStatus('unavailable');
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          setLocationStatus('granted');
-        },
-        () => setLocationStatus('denied'),
-        { enableHighAccuracy: true, maximumAge: 60000, timeout: 9000 }
-      );
-      return;
-    }
+    setLocationMessage('');
 
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-
-      if (permission.status !== 'granted') {
-        setLocationStatus('denied');
-        return;
-      }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      setUserLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
+      const position = await getDeviceLocation();
+      setUserLocation(position);
       setLocationStatus('granted');
-    } catch {
-      setLocationStatus('unavailable');
+      setLocationMessage(
+        position.source === 'last-known'
+          ? 'Using your last known location. Tap locate again after GPS is ready.'
+          : ''
+      );
+    } catch (locationError) {
+      setLocationStatus(isLocationPermissionError(locationError) ? 'denied' : 'unavailable');
+      setLocationMessage(
+        locationError instanceof Error
+          ? locationError.message
+          : 'Could not read your current location.'
+      );
     }
   }, []);
 
@@ -145,6 +129,14 @@ export default function MapTabScreen() {
   useEffect(() => {
     void requestUserLocation();
   }, [requestUserLocation]);
+
+  useEffect(() => {
+    if (view === 'locations') {
+      setFilter('LOCATION');
+    } else if (view === 'requests') {
+      setFilter('REQUEST');
+    }
+  }, [view]);
 
   const items = useMemo<SupportMapItem[]>(() => {
     const requestItems = requests
@@ -255,6 +247,19 @@ export default function MapTabScreen() {
     router.push({ pathname: '/support-location-detail', params: { id: item.id } } as never);
   }
 
+  const isLocating = locationStatus === 'requesting';
+  const shouldShowLocationNotice = locationStatus !== 'granted' || Boolean(locationMessage);
+  const locationNoticeText =
+    locationStatus === 'requesting'
+      ? 'Requesting location permission...'
+      : locationMessage || 'Enable location to sort by distance and draw routes.';
+  const locationActionLabel =
+    locationStatus === 'requesting'
+      ? 'Locating'
+      : locationStatus === 'granted'
+        ? 'Refresh'
+        : 'Enable';
+
   return (
     <View style={styles.screen}>
       <SupportMap
@@ -267,14 +272,25 @@ export default function MapTabScreen() {
 
       <SafeAreaView pointerEvents="box-none" style={styles.overlay}>
         <View style={styles.topPanel}>
+          <DashboardTopHeader title="Map" />
           <View style={styles.titleRow}>
             <View>
               <Text style={styles.eyebrow}>Support map</Text>
               <Text style={styles.title}>Nearby help</Text>
             </View>
-            <Pressable accessibilityRole="button" onPress={loadMapData} style={styles.iconButton}>
-              <Feather name="refresh-cw" size={17} color={authPalette.primaryDark} />
-            </Pressable>
+            <View style={styles.mapActionRow}>
+              <Pressable
+                accessibilityLabel="Use current location"
+                accessibilityRole="button"
+                disabled={isLocating}
+                onPress={requestUserLocation}
+                style={[styles.iconButton, isLocating && styles.disabledButton]}>
+                <Feather name="navigation" size={17} color={authPalette.primaryDark} />
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={loadMapData} style={styles.iconButton}>
+                <Feather name="refresh-cw" size={17} color={authPalette.primaryDark} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.searchShell}>
@@ -323,29 +339,30 @@ export default function MapTabScreen() {
             ))}
           </ScrollView>
 
-          {locationStatus !== 'granted' ? (
+          {shouldShowLocationNotice ? (
             <View style={styles.noticeRow}>
               <Feather
                 name={locationStatus === 'denied' ? 'map-pin' : 'navigation'}
                 size={15}
                 color={locationStatus === 'denied' ? '#B94540' : authPalette.primaryDark}
               />
-              <Text style={styles.noticeText}>
-                {locationStatus === 'requesting'
-                  ? 'Requesting location permission...'
-                  : 'Enable location to sort by distance and draw routes.'}
-              </Text>
-              <Pressable accessibilityRole="button" onPress={requestUserLocation}>
-                <Text style={styles.noticeAction}>Enable</Text>
+              <Text style={styles.noticeText}>{locationNoticeText}</Text>
+              <Pressable
+                accessibilityRole="button"
+                disabled={isLocating}
+                onPress={requestUserLocation}>
+                <Text style={[styles.noticeAction, isLocating && styles.noticeActionDisabled]}>
+                  {locationActionLabel}
+                </Text>
               </Pressable>
             </View>
           ) : null}
-        </View>
 
-        <View style={styles.legend}>
-          <LegendDot color="#B94540" label="Request" />
-          <LegendDot color="#1C6D49" label="Location" />
-          <LegendDot color="#F07F5A" label="Selected" />
+          <View style={styles.legend}>
+            <LegendDot color="#B94540" label="Request" />
+            <LegendDot color="#1C6D49" label="Location" />
+            <LegendDot color="#F07F5A" label="Selected" />
+          </View>
         </View>
 
         <View style={styles.bottomPanel}>
@@ -483,6 +500,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 12,
   },
+  disabledButton: {
+    opacity: 0.55,
+  },
   disabledChip: {
     opacity: 0.45,
   },
@@ -562,14 +582,14 @@ const styles = StyleSheet.create({
   legend: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 999,
+    borderColor: '#E0E9E2',
+    borderRadius: 8,
+    borderWidth: 1,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
-    left: 16,
     paddingHorizontal: 11,
     paddingVertical: 8,
-    position: 'absolute',
-    top: 248,
   },
   legendDot: {
     borderRadius: 5,
@@ -615,10 +635,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 4,
   },
+  mapActionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
   noticeAction: {
     color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
     fontSize: 12,
+  },
+  noticeActionDisabled: {
+    color: authPalette.muted,
   },
   noticeRow: {
     alignItems: 'center',
@@ -737,7 +765,7 @@ const styles = StyleSheet.create({
     padding: 12,
     position: 'absolute',
     right: 16,
-    top: 12,
+    top: 28,
     shadowColor: '#0F4B34',
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.08,

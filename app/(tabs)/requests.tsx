@@ -23,7 +23,7 @@ import {
   type SupportRequestStatus,
   type SupportRequestSummary,
 } from '@/components/support-request/request-api';
-import { canCreateRequests, canManageSupportLocations, getRoleTone } from '@/constants/role-access';
+import { canCreateRequests, canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 const statusFilters: { label: string; value?: SupportRequestStatus }[] = [
@@ -83,9 +83,7 @@ export default function RequestsTabScreen() {
   );
 
   return (
-    <DashboardScreen
-      title={showSupportTabs ? 'Support' : 'Support Requests'}
-      rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+    <DashboardScreen title="Request">
       {showSupportTabs ? (
         <SectionTabs
           items={[

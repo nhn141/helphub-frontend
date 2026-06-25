@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react';
+import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { authPalette } from '@/components/auth/auth-ui';
+import { useAuth } from '@/components/auth/auth-provider';
 import { NotificationBell } from '@/components/notification/notification-menu';
+import { UserAvatar } from '@/components/user/user-avatar';
 import { Fonts } from '@/constants/theme';
 
 type DashboardScreenProps = {
   title: string;
   subtitle?: string;
-  rightSlot?: ReactNode;
   children: ReactNode;
 };
 
@@ -43,7 +45,6 @@ type SurfaceCardProps = {
 export function DashboardScreen({
   title,
   subtitle,
-  rightSlot,
   children,
 }: DashboardScreenProps) {
   return (
@@ -52,27 +53,48 @@ export function DashboardScreen({
         style={styles.screen}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerText}>
-            <View style={styles.titleStage}>
-              <View style={styles.titleGlowMint} />
-              <View style={styles.titleGlowCoral} />
-              <Text style={styles.title}>{title}</Text>
-              <View style={styles.titleAccent}>
-                <View style={styles.titleAccentDot} />
-                <View style={styles.titleAccentLine} />
-              </View>
-            </View>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          </View>
-          <View style={styles.headerActions}>
-            {rightSlot ? <View style={styles.rightSlot}>{rightSlot}</View> : null}
-            <NotificationBell />
-          </View>
-        </View>
+        <DashboardTopHeader subtitle={subtitle} title={title} />
         {children}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+export function DashboardTopHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+  const { user } = useAuth();
+  const displayName = user?.fullName ?? 'Guest User';
+
+  return (
+    <View style={styles.header}>
+      <Pressable
+        accessibilityLabel="Open profile"
+        accessibilityRole="button"
+        onPress={() => router.push('/(tabs)/profile')}
+        style={styles.profileButton}>
+        <UserAvatar
+          fallback="HH"
+          name={displayName}
+          openable={false}
+          size={38}
+          style={styles.profileAvatar}
+          textSize={13}
+          uri={user?.avatarUrl}
+        />
+      </Pressable>
+      <View style={styles.headerTitleWrap}>
+        <Text adjustsFontSizeToFit minimumFontScale={0.82} numberOfLines={1} style={styles.title}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text numberOfLines={1} style={styles.subtitle}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.headerSide}>
+        <NotificationBell />
+      </View>
+    </View>
   );
 }
 
@@ -159,87 +181,55 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   header: {
+    alignItems: 'center',
     flexDirection: 'row',
-    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 16,
+    minHeight: 56,
     zIndex: 20,
   },
-  headerText: {
-    flex: 1,
-    gap: 6,
-  },
-  titleStage: {
-    alignSelf: 'flex-start',
-    position: 'relative',
-    paddingTop: 8,
-    paddingRight: 16,
-    paddingBottom: 10,
-  },
-  titleGlowMint: {
-    position: 'absolute',
-    left: -10,
-    top: 0,
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#BDF6D7',
-    opacity: 0.62,
-  },
-  titleGlowCoral: {
-    position: 'absolute',
-    right: -6,
-    bottom: 8,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFD4C7',
-    opacity: 0.72,
-  },
-  headerActions: {
+  headerSide: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-end',
-    marginLeft: 4,
-    zIndex: 30,
+    justifyContent: 'center',
+    width: 48,
   },
-  rightSlot: {
-    alignItems: 'flex-end',
-    maxWidth: 148,
+  headerTitleWrap: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#FFF4CF',
+    borderRadius: 999,
+    justifyContent: 'center',
+    maxWidth: '100%',
+    minHeight: 44,
+    minWidth: 0,
+    paddingHorizontal: 26,
+    paddingVertical: 7,
   },
   title: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 30,
     color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
-    textShadowColor: 'rgba(146, 240, 200, 0.78)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 16,
+    textAlign: 'center',
+    textShadowColor: 'rgba(146, 240, 200, 0.55)',
+    textShadowOffset: { height: 2, width: 0 },
+    textShadowRadius: 8,
   },
-  titleAccent: {
-    marginTop: 8,
-    flexDirection: 'row',
+  profileButton: {
     alignItems: 'center',
-    gap: 7,
+    justifyContent: 'center',
+    width: 48,
   },
-  titleAccentDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: authPalette.coral,
-  },
-  titleAccentLine: {
-    width: 72,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: authPalette.mint,
+  profileAvatar: {
+    backgroundColor: '#DDF5E8',
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 11,
+    lineHeight: 15,
     color: authPalette.muted,
     fontFamily: Fonts.rounded,
+    marginTop: 2,
+    textAlign: 'center',
   },
   sectionHeader: {
     flexDirection: 'row',

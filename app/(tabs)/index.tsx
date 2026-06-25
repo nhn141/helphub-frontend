@@ -22,7 +22,7 @@ import {
   type SupportRequestSummary,
   type VolunteerAssignment,
 } from '@/components/support-request/request-api';
-import { AppRole, getRoleTone } from '@/constants/role-access';
+import { AppRole } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 const roleCopy: Record<AppRole, { label: string; title: string }> = {
@@ -154,9 +154,10 @@ export default function HomeTabScreen() {
     .filter((item) => item.status === 'PENDING' || item.status === 'APPROVED' || item.status === 'IN_PROGRESS')
     .slice(0, 3);
   const fundBalance = funds.reduce((sum, fund) => sum + Number(fund.totalBalance || 0), 0);
+  const quickActions = getQuickActions(role);
 
   return (
-    <DashboardScreen title="Community Hub" rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+    <DashboardScreen title="Home">
       <SurfaceCard>
         <Text style={styles.heroLabel}>{copy.label}</Text>
         <Text style={styles.heroTitle}>{copy.title}</Text>
@@ -183,26 +184,14 @@ export default function HomeTabScreen() {
         <SectionHeader title="Quick actions" />
         <SurfaceCard>
           <View style={styles.actionGrid}>
-            {role === 'REQUESTER' ? (
-              <ActionCard icon="plus-circle" label="Create request" onPress={() => router.push('/support-request-create')} />
-            ) : (
-              <ActionCard icon="clipboard" label="Support requests" onPress={() => router.push('/(tabs)/support')} />
-            )}
-            {role === 'ADMIN' ? (
-              <ActionCard icon="bar-chart-2" label="Statistics" onPress={() => router.push('/admin-statistics' as never)} />
-            ) : role === 'COLLABORATOR' ? (
+            {quickActions.map((action) => (
               <ActionCard
-                icon="map-pin"
-                label="Support locations"
-                onPress={() => router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } })}
+                icon={action.icon}
+                key={action.label}
+                label={action.label}
+                onPress={action.onPress}
               />
-            ) : role === 'VOLUNTEER' ? (
-              <ActionCard icon="check-circle" label="My assignments" onPress={() => router.push('/(tabs)/support')} />
-            ) : (
-              <ActionCard icon="folder" label="My requests" onPress={() => router.push('/support-request-my')} />
-            )}
-            <ActionCard icon="dollar-sign" label="Community funds" onPress={() => router.push('/(tabs)/funds' as never)} />
-            <ActionCard icon="message-circle" label="Community chat" onPress={() => router.push({ pathname: '/(tabs)/social', params: { view: 'chat' } })} />
+            ))}
           </View>
         </SurfaceCard>
       </View>
@@ -257,7 +246,7 @@ export default function HomeTabScreen() {
 
       <View>
         <SectionHeader title="Community finance" />
-        <Pressable onPress={() => router.push('/(tabs)/funds' as never)}>
+        <Pressable onPress={() => router.push('/community-funds' as never)}>
           <SurfaceCard>
             <View style={styles.financeRow}>
               <View>
@@ -271,6 +260,68 @@ export default function HomeTabScreen() {
       </View>
     </DashboardScreen>
   );
+}
+
+type QuickAction = {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+};
+
+function getQuickActions(role: AppRole): QuickAction[] {
+  if (role === 'REQUESTER') {
+    return [
+      { icon: 'plus-circle', label: 'Create request', onPress: () => router.push('/support-request-create') },
+      { icon: 'folder', label: 'My requests', onPress: () => router.push('/support-request-my') },
+      { icon: 'dollar-sign', label: 'Community fund', onPress: () => router.push('/community-funds' as never) },
+      {
+        icon: 'map-pin',
+        label: 'Support location',
+        onPress: () => router.push({ pathname: '/(tabs)/map', params: { view: 'locations' } }),
+      },
+    ];
+  }
+
+  if (role === 'VOLUNTEER') {
+    return [
+      { icon: 'clipboard', label: 'Support requests', onPress: () => router.push('/(tabs)/support') },
+      { icon: 'check-circle', label: 'My assignments', onPress: () => router.push('/(tabs)/support') },
+      { icon: 'dollar-sign', label: 'Community fund', onPress: () => router.push('/community-funds' as never) },
+      {
+        icon: 'message-circle',
+        label: 'Community chat',
+        onPress: () => router.push({ pathname: '/(tabs)/social', params: { view: 'chat' } }),
+      },
+    ];
+  }
+
+  if (role === 'COLLABORATOR') {
+    return [
+      { icon: 'clipboard', label: 'Review requests', onPress: () => router.push('/(tabs)/support') },
+      { icon: 'plus-circle', label: 'Create location', onPress: () => router.push('/support-location-create') },
+      {
+        icon: 'map-pin',
+        label: 'Support locations',
+        onPress: () => router.push({ pathname: '/(tabs)/support', params: { view: 'locations' } }),
+      },
+      { icon: 'dollar-sign', label: 'Community fund', onPress: () => router.push('/community-funds' as never) },
+    ];
+  }
+
+  return [
+    { icon: 'bar-chart-2', label: 'Statistics', onPress: () => router.push('/admin-statistics' as never) },
+    {
+      icon: 'users',
+      label: 'Manage users',
+      onPress: () =>
+        router.push({
+          pathname: '/(tabs)/system',
+          params: { section: 'manage-user', view: 'users' },
+        }),
+    },
+    { icon: 'plus-circle', label: 'Create location', onPress: () => router.push('/support-location-create') },
+    { icon: 'dollar-sign', label: 'Community fund', onPress: () => router.push('/community-funds' as never) },
+  ];
 }
 
 function ActionCard({ icon, label, onPress }: { icon: keyof typeof Feather.glyphMap; label: string; onPress: () => void }) {

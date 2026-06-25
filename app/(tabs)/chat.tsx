@@ -28,11 +28,15 @@ import {
   getConversationTitle,
   getInitials,
   getMyConversations,
+  getSharedItemPreview,
   markMessageAsRead,
+  parseSharedItemMessage,
   sendConversationMessage,
   type ChatMessage,
   type ConversationSummary,
   type RealtimeStatus,
+  type SharedItem,
+  type SharedItemType,
 } from '@/components/chat/chat-api';
 import {
   pickImageFromLibrary,
@@ -40,12 +44,9 @@ import {
   type PickedImage,
 } from '@/components/media/media-api';
 import { OpenableImage } from '@/components/media/image-viewer';
-import { Badge } from '@/components/dashboard/tab-ui';
+import { DashboardTopHeader } from '@/components/dashboard/tab-ui';
 import { SectionTabs } from '@/components/dashboard/section-tabs';
-import { useDemoRole } from '@/components/demo-role/demo-role-provider';
-import { NotificationBell } from '@/components/notification/notification-menu';
 import { UserAvatar } from '@/components/user/user-avatar';
-import { getRoleTone } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 function getStringParam(value: string | string[] | undefined) {
@@ -83,14 +84,24 @@ function getLatestMessage(messages: ChatMessage[]) {
   return messages.length > 0 ? messages[messages.length - 1] : null;
 }
 
+const sharedItemIcons: Record<SharedItemType, keyof typeof Feather.glyphMap> = {
+  FUND: 'credit-card',
+  LOCATION: 'map-pin',
+  REQUEST: 'heart',
+  SUPPORT: 'heart',
+};
+
 function getMessagePreviewText(message: ChatMessage | null, currentUserId?: string | null) {
   if (!message) {
     return 'No messages yet';
   }
 
-  const content = message.content?.trim() || ((message.media?.length ?? 0) > 0 ? 'Image' : 'Message');
+  const plainContent = message.content?.trim();
+  const content =
+    getSharedItemPreview(message.content) ??
+    (plainContent ? plainContent : (message.media?.length ?? 0) > 0 ? 'Image' : 'Message');
 
-  return message.senderId === currentUserId ? `B\u1ea1n: ${content}` : content;
+  return message.senderId === currentUserId ? `You: ${content}` : content;
 }
 
 function getConversationPreviewText(
@@ -130,7 +141,6 @@ export default function ChatTabScreen() {
   const requestedConversationId = getStringParam(params.conversationId);
   const { width } = useWindowDimensions();
   const { isAuthenticated, session, user } = useAuth();
-  const { role } = useDemoRole();
   const isWide = width >= 760;
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -646,6 +656,20 @@ export default function ChatTabScreen() {
     setSelectedConversationId(conversationId);
   }
 
+  function handleOpenSharedItem(item: SharedItem) {
+    if (item.type === 'LOCATION') {
+      router.push({ pathname: '/support-location-detail', params: { id: item.id } } as never);
+      return;
+    }
+
+    if (item.type === 'FUND') {
+      router.push({ pathname: '/community-fund-detail', params: { id: item.id } } as never);
+      return;
+    }
+
+    router.push({ pathname: '/support-request-detail', params: { id: item.id } } as never);
+  }
+
   const selectedTitle = selectedConversation
     ? getConversationTitle(selectedConversation, user?.id)
     : 'Conversation';
@@ -679,8 +703,8 @@ export default function ChatTabScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboard}>
         <View style={styles.header}>
-          <View style={styles.headerCopy}>
-            <Text style={styles.title}>Social</Text>
+          <DashboardTopHeader title="Social" />
+          <View style={styles.chatStatusBar}>
             <View style={styles.statusRow}>
               <View
                 style={[
@@ -697,13 +721,10 @@ export default function ChatTabScreen() {
                     : 'Offline'}
               </Text>
             </View>
-          </View>
-          <View style={styles.headerActions}>
-            <Pressable accessibilityRole="button" onPress={() => fetchChatData()} style={styles.iconButton}>
-              <Feather name="refresh-cw" size={19} color={authPalette.primaryDark} />
+            <Pressable accessibilityRole="button" onPress={() => fetchChatData()} style={styles.refreshButton}>
+              <Feather name="refresh-cw" size={16} color={authPalette.primaryDark} />
+              <Text style={styles.refreshText}>Refresh</Text>
             </Pressable>
-            <Badge label={role} tone={getRoleTone(role)} />
-            <NotificationBell />
           </View>
         </View>
 
@@ -799,6 +820,7 @@ export default function ChatTabScreen() {
                       {selectedMessages.map((message) => {
                         const isMine = message.senderId === user?.id;
                         const messageMedia = message.media ?? [];
+                        const sharedItem = parseSharedItemMessage(message.content);
 
                         return (
                           <View
@@ -820,6 +842,7 @@ export default function ChatTabScreen() {
                               style={[
                                 styles.messageBubble,
                                 isMine ? styles.messageBubbleMine : styles.messageBubbleOther,
+                                sharedItem && styles.sharedMessageBubble,
                               ]}>
                               {!isMine ? (
                                 <Text style={styles.messageSender}>{message.senderName}</Text>
@@ -864,7 +887,13 @@ export default function ChatTabScreen() {
                                   })}
                                 </View>
                               ) : null}
-                              {message.content ? (
+                              {sharedItem ? (
+                                <SharedItemCard
+                                  isMine={isMine}
+                                  item={sharedItem}
+                                  onPress={() => handleOpenSharedItem(sharedItem)}
+                                />
+                              ) : message.content ? (
                                 <Text
                                   style={[
                                     styles.messageText,
@@ -877,7 +906,8 @@ export default function ChatTabScreen() {
                               <Text
                                 style={[
                                   styles.messageTime,
-                                  isMine && styles.messageTimeMine,
+                                  isMine && !sharedItem && styles.messageTimeMine,
+                                  sharedItem && styles.sharedMessageTime,
                                 ]}>
                                 {formatChatDateTime(message.createdAt)}
                                 {message.editedAt ? ' - edited' : ''}
@@ -952,6 +982,38 @@ export default function ChatTabScreen() {
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function SharedItemCard({
+  isMine,
+  item,
+  onPress,
+}: {
+  isMine: boolean;
+  item: SharedItem;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.sharedItemCard, isMine && styles.sharedItemCardMine]}>
+      <View style={[styles.sharedItemIcon, isMine && styles.sharedItemIconMine]}>
+        <Feather
+          name={sharedItemIcons[item.type]}
+          size={17}
+          color={isMine ? authPalette.primaryDark : '#FFFFFF'}
+        />
+      </View>
+      <View style={styles.sharedItemCopy}>
+        <Text style={styles.sharedItemLabel}>{item.label}</Text>
+        <Text numberOfLines={2} style={styles.sharedItemTitle}>
+          {item.title}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={18} color={authPalette.muted} />
+    </Pressable>
   );
 }
 
@@ -1092,21 +1154,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   header: {
+    gap: 10,
+    zIndex: 20,
+  },
+  chatStatusBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    zIndex: 20,
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 5,
-  },
-  title: {
-    color: authPalette.primaryDark,
-    fontFamily: Fonts.rounded,
-    fontSize: 30,
-    lineHeight: 36,
   },
   statusRow: {
     alignItems: 'center',
@@ -1130,20 +1184,19 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.rounded,
     fontSize: 13,
   },
-  headerActions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'flex-end',
-    zIndex: 30,
-  },
-  iconButton: {
+  refreshButton: {
     alignItems: 'center',
     backgroundColor: '#ECF5EF',
     borderRadius: 8,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  refreshText: {
+    color: authPalette.primaryDark,
+    fontFamily: Fonts.rounded,
+    fontSize: 12,
   },
   segment: {
     backgroundColor: '#EAF0EB',
@@ -1452,6 +1505,11 @@ const styles = StyleSheet.create({
   messageBubbleOther: {
     backgroundColor: '#EFF4F0',
   },
+  sharedMessageBubble: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
   messageSender: {
     color: authPalette.primaryDark,
     fontFamily: Fonts.rounded,
@@ -1499,6 +1557,55 @@ const styles = StyleSheet.create({
   },
   messageTimeMine: {
     color: '#D8F8E7',
+  },
+  sharedMessageTime: {
+    alignSelf: 'flex-end',
+    color: '#7D8980',
+    marginRight: 2,
+  },
+  sharedItemCard: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D9E7DE',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 72,
+    padding: 12,
+    width: 260,
+  },
+  sharedItemCardMine: {
+    backgroundColor: '#EAF8EF',
+    borderColor: '#B9DFC9',
+  },
+  sharedItemCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sharedItemIcon: {
+    alignItems: 'center',
+    backgroundColor: authPalette.primaryDark,
+    borderRadius: 8,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  sharedItemIconMine: {
+    backgroundColor: '#CDEDD8',
+  },
+  sharedItemLabel: {
+    color: authPalette.primaryDark,
+    fontFamily: Fonts.rounded,
+    fontSize: 11,
+    textTransform: 'uppercase',
+  },
+  sharedItemTitle: {
+    color: authPalette.text,
+    fontFamily: Fonts.rounded,
+    fontSize: 14,
+    lineHeight: 19,
+    marginTop: 3,
   },
   composerWrap: {
     borderTopColor: '#EDF2EE',

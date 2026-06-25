@@ -41,9 +41,7 @@ export default function ProfileTabScreen() {
   }
 
   return (
-    <DashboardScreen
-      title="My Profile"
-      rightSlot={<Badge label={role} tone={getRoleTone(role)} />}>
+    <DashboardScreen title="Profile">
       <SurfaceCard>
         <View style={styles.profileTop}>
           <UserAvatar
@@ -57,6 +55,7 @@ export default function ProfileTabScreen() {
           <View style={styles.profileInfo}>
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.email}>{displayEmail}</Text>
+            <Badge label={role} tone={getRoleTone(role)} />
           </View>
         </View>
 

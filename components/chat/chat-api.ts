@@ -78,6 +78,15 @@ export type RealtimeNotificationPayload = {
 
 export type RealtimeStatus = 'connecting' | 'connected' | 'disconnected';
 
+export type SharedItemType = 'SUPPORT' | 'REQUEST' | 'LOCATION' | 'FUND';
+
+export type SharedItem = {
+  id: string;
+  label: string;
+  title: string;
+  type: SharedItemType;
+};
+
 type RealtimeHandlers = {
   onMessage?: (payload: RealtimeMessagePayload) => void;
   onNotification?: (payload: RealtimeNotificationPayload) => void;
@@ -270,6 +279,61 @@ export function formatChatDateTime(value: string | null | undefined) {
   const minutes = String(parsed.getMinutes()).padStart(2, '0');
 
   return `${day}/${month} ${hours}:${minutes}`;
+}
+
+export function getSharedItemLabel(type: SharedItemType) {
+  switch (type) {
+    case 'FUND':
+      return 'community fund';
+    case 'LOCATION':
+      return 'location hub';
+    case 'REQUEST':
+    case 'SUPPORT':
+      return 'support request';
+    default:
+      return 'shared item';
+  }
+}
+
+export function buildSharedItemMessage(type: SharedItemType, id: string, title: string) {
+  const normalizedType = type === 'REQUEST' ? 'SUPPORT' : type;
+  const normalizedTitle =
+    title
+      .replace(/[\r\n:[\]]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim() || getSharedItemLabel(normalizedType);
+
+  return `[SHARED_ITEM:${normalizedType}:${id}:${normalizedTitle}]`;
+}
+
+export function parseSharedItemMessage(content: string | null | undefined): SharedItem | null {
+  const match = content?.trim().match(/^\[SHARED_ITEM:([^:\]]+):([^:\]]+):(.*)\]$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const rawType = match[1].toUpperCase();
+
+  if (!['SUPPORT', 'REQUEST', 'LOCATION', 'FUND'].includes(rawType)) {
+    return null;
+  }
+
+  const type = rawType as SharedItemType;
+  const label = getSharedItemLabel(type);
+
+  return {
+    id: match[2],
+    label,
+    title: match[3].trim() || label,
+    type,
+  };
+}
+
+export function getSharedItemPreview(content: string | null | undefined) {
+  const sharedItem = parseSharedItemMessage(content);
+
+  return sharedItem ? `Shared a ${sharedItem.label}` : null;
 }
 
 export function extractConversationId(actionUrl: string | null | undefined) {

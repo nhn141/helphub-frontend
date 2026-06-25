@@ -6,6 +6,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { useAuth } from '@/components/auth/auth-provider';
 import { authPalette } from '@/components/auth/auth-ui';
+import { ShareItemSheet } from '@/components/chat/share-item-sheet';
 import { FilterChip } from '@/components/dashboard/tab-ui';
 import {
   addCommunityFundMember,
@@ -54,6 +55,10 @@ function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
 
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export default function CommunityFundDetailScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const fundId = firstParam(params.id);
@@ -68,6 +73,7 @@ export default function CommunityFundDetailScreen() {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [isActioning, setIsActioning] = useState(false);
+  const [isShareSheetVisible, setIsShareSheetVisible] = useState(false);
 
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState('');
@@ -83,10 +89,9 @@ export default function CommunityFundDetailScreen() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseDescription, setExpenseDescription] = useState('');
-  const [supportRequestId, setSupportRequestId] = useState('');
 
   const [showMemberForm, setShowMemberForm] = useState(false);
-  const [memberUserId, setMemberUserId] = useState('');
+  const [memberUserEmail, setMemberUserEmail] = useState('');
   const [memberRole, setMemberRole] = useState<CommunityFundMemberRole>('MEMBER');
 
   const currentMembership = useMemo(
@@ -210,26 +215,32 @@ export default function CommunityFundDetailScreen() {
         amount,
         description: expenseDescription.trim(),
         fundId,
-        supportRequestId: supportRequestId.trim() || undefined,
       }),
       () => {
         setExpenseAmount('');
         setExpenseDescription('');
-        setSupportRequestId('');
         setShowExpenseForm(false);
       }
     );
   }
 
   function submitMember() {
-    if (!session?.accessToken || !fundId || !memberUserId.trim()) {
-      setActionError('User ID is required.');
+    const normalizedEmail = memberUserEmail.trim().toLowerCase();
+
+    if (!session?.accessToken || !fundId || !normalizedEmail) {
+      setActionError('User email is required.');
       return;
     }
+
+    if (!isValidEmail(normalizedEmail)) {
+      setActionError('Please enter a valid user email.');
+      return;
+    }
+
     void runAction(
-      () => addCommunityFundMember(session.accessToken, fundId, memberUserId.trim(), memberRole),
+      () => addCommunityFundMember(session.accessToken, fundId, normalizedEmail, memberRole),
       () => {
-        setMemberUserId('');
+        setMemberUserEmail('');
         setMemberRole('MEMBER');
         setShowMemberForm(false);
       }
@@ -321,6 +332,14 @@ export default function CommunityFundDetailScreen() {
                     label={showDonationForm ? 'Close donation form' : 'Record a donation'}
                     onPress={() => setShowDonationForm((value) => !value)}
                   />
+                  <View style={styles.topGap}>
+                    <ManagementButton
+                      label="Share to chat"
+                      leftIcon={<Feather name="share-2" size={15} color={authPalette.primaryDark} />}
+                      onPress={() => setIsShareSheetVisible(true)}
+                      variant="outline"
+                    />
+                  </View>
                   {canManage ? (
                     <View style={styles.topGap}>
                       <ManagementButton
@@ -348,7 +367,13 @@ export default function CommunityFundDetailScreen() {
                       ]}
                       value={editActive ? 'active' : 'inactive'}
                     />
-                    <ManagementButton disabled={isActioning} label={isActioning ? 'Saving...' : 'Save changes'} onPress={saveFund} />
+                    <View style={styles.formButtonGap}>
+                      <ManagementButton
+                        disabled={isActioning}
+                        label={isActioning ? 'Saving...' : 'Save changes'}
+                        onPress={saveFund}
+                      />
+                    </View>
                   </ManagementCard>
                 </ManagementSection>
               ) : null}
@@ -389,8 +414,13 @@ export default function CommunityFundDetailScreen() {
                 <ManagementCard>
                   <ManagementField label="Amount (VND)" keyboardType="numeric" onChangeText={setExpenseAmount} value={expenseAmount} />
                   <ManagementField label="Description" multiline maxLength={1000} onChangeText={setExpenseDescription} value={expenseDescription} />
-                  <ManagementField label="Support request ID (optional)" autoCapitalize="none" onChangeText={setSupportRequestId} value={supportRequestId} />
-                  <ManagementButton disabled={isActioning} label={isActioning ? 'Saving...' : 'Record expense'} onPress={submitExpense} />
+                  <View style={styles.formButtonGap}>
+                    <ManagementButton
+                      disabled={isActioning}
+                      label={isActioning ? 'Saving...' : 'Record expense'}
+                      onPress={submitExpense}
+                    />
+                  </View>
                 </ManagementCard>
               ) : null}
               {expenses.length === 0 ? (
@@ -423,7 +453,15 @@ export default function CommunityFundDetailScreen() {
               ) : null}
               {showMemberForm && canManage ? (
                 <ManagementCard>
-                  <ManagementField label="User ID" autoCapitalize="none" onChangeText={setMemberUserId} placeholder="Paste the user's UUID" value={memberUserId} />
+                  <ManagementField
+                    label="User email"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    onChangeText={setMemberUserEmail}
+                    placeholder="member@example.com"
+                    textContentType="emailAddress"
+                    value={memberUserEmail}
+                  />
                   <ManagementChoiceGroup
                     label="Fund role"
                     onChange={(value) => setMemberRole(value as CommunityFundMemberRole)}
@@ -433,7 +471,13 @@ export default function CommunityFundDetailScreen() {
                     ]}
                     value={memberRole}
                   />
-                  <ManagementButton disabled={isActioning} label={isActioning ? 'Adding...' : 'Add member'} onPress={submitMember} />
+                  <View style={styles.formButtonGap}>
+                    <ManagementButton
+                      disabled={isActioning}
+                      label={isActioning ? 'Adding...' : 'Add member'}
+                      onPress={submitMember}
+                    />
+                  </View>
                 </ManagementCard>
               ) : null}
               <View style={styles.stack}>
@@ -464,6 +508,16 @@ export default function CommunityFundDetailScreen() {
           ) : null}
         </>
       ) : null}
+
+      {fund ? (
+        <ShareItemSheet
+          itemId={fund.id}
+          itemTitle={fund.name}
+          itemType="FUND"
+          onClose={() => setIsShareSheetVisible(false)}
+          visible={isShareSheetVisible}
+        />
+      ) : null}
     </ManagementScreen>
   );
 
@@ -483,7 +537,13 @@ export default function CommunityFundDetailScreen() {
           />
           <ManagementField label="Transaction code (optional)" maxLength={100} onChangeText={setTransactionCode} value={transactionCode} />
           <ManagementField label="Note (optional)" maxLength={500} multiline onChangeText={setDonationNote} value={donationNote} />
-          <ManagementButton disabled={isActioning} label={isActioning ? 'Recording...' : 'Record donation'} onPress={submitDonation} />
+          <View style={styles.formButtonGap}>
+            <ManagementButton
+              disabled={isActioning}
+              label={isActioning ? 'Recording...' : 'Record donation'}
+              onPress={submitDonation}
+            />
+          </View>
         </ManagementCard>
       </ManagementSection>
     );
@@ -498,6 +558,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#AE3F3A', fontFamily: Fonts.rounded, fontSize: 14, lineHeight: 21 },
   expenseAmount: { color: '#AE3F3A', fontFamily: Fonts.rounded, fontSize: 17 },
   formNotice: { backgroundColor: '#FFF5E2', borderRadius: 14, color: '#805B12', fontFamily: Fonts.rounded, fontSize: 13, lineHeight: 20, marginBottom: 4, padding: 12 },
+  formButtonGap: { marginTop: 16 },
   fundDescription: { color: authPalette.text, fontFamily: Fonts.rounded, fontSize: 15, lineHeight: 23 },
   helperText: { color: authPalette.muted, fontFamily: Fonts.rounded, fontSize: 13, lineHeight: 20, marginTop: 4 },
   itemAmount: { color: authPalette.primaryDark, fontFamily: Fonts.rounded, fontSize: 17 },

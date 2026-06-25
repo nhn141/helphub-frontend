@@ -56,7 +56,7 @@ export function SupportMap({
         mapPadding={{ bottom: 220, left: 12, right: 12, top: 180 }}
         showsCompass
         showsMyLocationButton={false}
-        showsUserLocation={false}
+        showsUserLocation={Boolean(userLocation)}
         style={styles.map}>
         {userLocation ? (
           <Marker

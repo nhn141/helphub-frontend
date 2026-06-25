@@ -1,4 +1,5 @@
 import { apiRequest, type ApiEnvelope } from '@/components/auth/auth-api';
+import type { SupportRequestSummary } from '@/components/support-request/request-api';
 
 export type SupportLocationSummary = {
   id: string;
@@ -62,6 +63,18 @@ export async function getMyCreatedSupportLocations(accessToken: string) {
 export async function getSupportLocationById(accessToken: string, id: string) {
   const response = await apiRequest<ApiEnvelope<SupportLocationDetail>>(
     `/support-locations/${id}`,
+    {
+      accessToken,
+      method: 'GET',
+    }
+  );
+
+  return response.data;
+}
+
+export async function getSupportRequestsBySupportLocation(accessToken: string, id: string) {
+  const response = await apiRequest<ApiEnvelope<SupportRequestSummary[]>>(
+    `/support-locations/${id}/support-requests`,
     {
       accessToken,
       method: 'GET',

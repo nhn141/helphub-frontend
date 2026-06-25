@@ -6,6 +6,7 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { getAuthErrorMessage } from '@/components/auth/auth-api';
 import { authPalette } from '@/components/auth/auth-ui';
 import { useAuth } from '@/components/auth/auth-provider';
+import { ShareItemSheet } from '@/components/chat/share-item-sheet';
 import { UserAvatar } from '@/components/user/user-avatar';
 import {
   applyToSupportRequest,
@@ -60,6 +61,7 @@ export default function SupportRequestDetailScreen() {
   const [error, setError] = useState('');
   const [assignmentError, setAssignmentError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isShareSheetVisible, setIsShareSheetVisible] = useState(false);
   const [rejectingVolunteerId, setRejectingVolunteerId] = useState<string | null>(null);
   const [volunteerRejectionReason, setVolunteerRejectionReason] = useState('');
 
@@ -581,6 +583,15 @@ export default function SupportRequestDetailScreen() {
             )}
           </View>
 
+          <View style={styles.shareButton}>
+            <RequestButton
+              label="Share to chat"
+              leftIcon={<Feather name="share-2" size={15} color={authPalette.primaryDark} />}
+              onPress={() => setIsShareSheetVisible(true)}
+              variant="outline"
+            />
+          </View>
+
           {user?.id !== requestDetail.requesterId &&
           requestDetail.status !== 'REJECTED' &&
           requestDetail.status !== 'CANCELLED' ? (
@@ -1071,6 +1082,16 @@ export default function SupportRequestDetailScreen() {
 
         </RequestCard>
       ) : null}
+
+      {requestDetail ? (
+        <ShareItemSheet
+          itemId={requestDetail.id}
+          itemTitle={requestDetail.title}
+          itemType="SUPPORT"
+          onClose={() => setIsShareSheetVisible(false)}
+          visible={isShareSheetVisible}
+        />
+      ) : null}
     </RequestScreen>
   );
 }
@@ -1171,6 +1192,9 @@ const styles = StyleSheet.create({
     color: '#AE3F3A',
     fontFamily: Fonts.rounded,
     fontSize: 12,
+  },
+  shareButton: {
+    marginBottom: 16,
   },
   infoRow: {
     flexDirection: 'row',

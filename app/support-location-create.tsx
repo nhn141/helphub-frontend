@@ -7,16 +7,19 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { createSupportLocation } from '@/components/management/support-location-api';
 import {
   ManagementButton,
+  ManagementCard,
   ManagementField,
   ManagementScreen,
   ManagementSection,
 } from '@/components/management/management-ui';
 import { LocationPicker } from '@/components/map/location-picker';
 import type { Coordinates } from '@/components/map/map-utils';
+import { canManageSupportLocations } from '@/constants/role-access';
 import { Fonts } from '@/constants/theme';
 
 export default function SupportLocationCreateScreen() {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const canCreateLocation = Boolean(user?.role && canManageSupportLocations(user.role));
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -30,6 +33,11 @@ export default function SupportLocationCreateScreen() {
   const handleCreate = async () => {
     if (!session?.accessToken) {
       router.replace('/login' as never);
+      return;
+    }
+
+    if (!canCreateLocation) {
+      setError('Only collaborators and admins can create support locations.');
       return;
     }
 
@@ -68,6 +76,21 @@ export default function SupportLocationCreateScreen() {
       setIsSubmitting(false);
     }
   };
+
+  if (!canCreateLocation) {
+    return (
+      <ManagementScreen
+        title="Create Location"
+        onBackPress={() => router.push('/(tabs)/map')}>
+        <ManagementCard>
+          <Text style={styles.restrictedTitle}>Collaborator or admin only</Text>
+          <Text style={styles.helperText}>
+            Support location creation is available for users who coordinate request assignment.
+          </Text>
+        </ManagementCard>
+      </ManagementScreen>
+    );
+  }
 
   return (
     <ManagementScreen
@@ -130,5 +153,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     fontFamily: Fonts.rounded,
+  },
+  helperText: {
+    color: '#657368',
+    fontFamily: Fonts.rounded,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 8,
+  },
+  restrictedTitle: {
+    color: '#20382A',
+    fontFamily: Fonts.rounded,
+    fontSize: 16,
   },
 });
