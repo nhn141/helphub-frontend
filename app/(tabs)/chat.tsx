@@ -91,6 +91,8 @@ const sharedItemIcons: Record<SharedItemType, keyof typeof Feather.glyphMap> = {
   SUPPORT: 'heart',
 };
 
+const CHAT_FALLBACK_REFRESH_MS = 1000;
+
 function getMessagePreviewText(message: ChatMessage | null, currentUserId?: string | null) {
   if (!message) {
     return 'No messages yet';
@@ -512,7 +514,7 @@ export default function ChatTabScreen() {
       if (conversationId) {
         void refreshConversationMessages(conversationId, { silent: true });
       }
-    }, 5000);
+    }, CHAT_FALLBACK_REFRESH_MS);
 
     return () => clearInterval(interval);
   }, [

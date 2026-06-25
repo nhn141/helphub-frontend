@@ -1,6 +1,5 @@
-import { Client, type IMessage, type StompSubscription } from '@stomp/stompjs';
-
-import { API_BASE_URL, apiRequest, type ApiEnvelope } from '@/components/auth/auth-api';
+import { apiRequest, type ApiEnvelope } from '@/components/auth/auth-api';
+import { chatRealtimeClient, type StompFrame } from '@/components/chat/realtime-client';
 
 export type ConversationType = 'PRIVATE' | 'GROUP';
 
@@ -357,72 +356,40 @@ export function connectChatRealtime(
   subscriptions: RealtimeSubscriptionOptions = {}
 ) {
   let disposed = false;
-  let activeSubscriptions: StompSubscription[] = [];
+  const activeSubscriptions: string[] = [];
   const shouldSubscribeMessages = subscriptions.messages ?? true;
   const shouldSubscribeNotifications = subscriptions.notifications ?? true;
-
-  const client = new Client({
-    connectHeaders: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    heartbeatIncoming: 10000,
-    heartbeatOutgoing: 10000,
-    connectionTimeout: 8000,
-    reconnectDelay: 3000,
-    webSocketFactory: () => new WebSocket(getWebSocketUrl()),
-    beforeConnect: () => {
-      if (!disposed) {
-        handlers.onStatusChange?.('connecting');
-      }
-    },
-    onConnect: () => {
-      if (disposed) {
-        return;
-      }
-
-      activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
-      activeSubscriptions = [];
-
-      if (shouldSubscribeMessages) {
-        activeSubscriptions.push(
-          client.subscribe('/user/queue/messages', (message) => {
-            handleRealtimeMessage(message, handlers, 'messages');
-          })
-        );
-      }
-
-      if (shouldSubscribeNotifications) {
-        activeSubscriptions.push(
-          client.subscribe('/user/queue/notifications', (message) => {
-            handleRealtimeMessage(message, handlers, 'notifications');
-          })
-        );
-      }
-
-      handlers.onStatusChange?.('connected');
-    },
-    onStompError: (frame) => {
-      handlers.onError?.(
-        frame.body || frame.headers.message || 'Realtime connection error.'
-      );
-    },
-    onWebSocketError: () => {
-      if (!disposed) {
-        handlers.onError?.('Realtime connection error.');
-      }
-    },
-    onWebSocketClose: () => {
-      activeSubscriptions = [];
-      if (!disposed) {
-        handlers.onStatusChange?.('disconnected');
-      }
-    },
+  const statusListenerId = chatRealtimeClient.addStatusListener((status) => {
+    if (!disposed) {
+      handlers.onStatusChange?.(status);
+    }
   });
+  const errorListenerId = chatRealtimeClient.addErrorListener((message) => {
+    if (!disposed) {
+      handlers.onError?.(message);
+    }
+  });
+
+  if (shouldSubscribeMessages) {
+    activeSubscriptions.push(
+      chatRealtimeClient.subscribe('/user/queue/messages', (message) => {
+        handleRealtimeMessage(message, handlers, 'messages');
+      })
+    );
+  }
+
+  if (shouldSubscribeNotifications) {
+    activeSubscriptions.push(
+      chatRealtimeClient.subscribe('/user/queue/notifications', (message) => {
+        handleRealtimeMessage(message, handlers, 'notifications');
+      })
+    );
+  }
 
   handlers.onStatusChange?.('connecting');
 
   try {
-    client.activate();
+    chatRealtimeClient.connect(accessToken);
   } catch (error) {
     handlers.onStatusChange?.('disconnected');
     handlers.onError?.(
@@ -433,21 +400,18 @@ export function connectChatRealtime(
   return {
     disconnect() {
       disposed = true;
-      activeSubscriptions.forEach((subscription) => subscription.unsubscribe());
-      activeSubscriptions = [];
-      void client.deactivate();
+      chatRealtimeClient.removeStatusListener(statusListenerId);
+      chatRealtimeClient.removeErrorListener(errorListenerId);
+      activeSubscriptions.forEach((subscriptionId) => {
+        chatRealtimeClient.unsubscribe(subscriptionId);
+      });
       handlers.onStatusChange?.('disconnected');
     },
   };
 }
 
-function getWebSocketUrl() {
-  const apiRoot = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
-  return `${apiRoot.replace(/^http/i, 'ws')}/ws`;
-}
-
 function handleRealtimeMessage(
-  message: IMessage,
+  message: StompFrame,
   handlers: RealtimeHandlers,
   destination: 'messages' | 'notifications'
 ) {
